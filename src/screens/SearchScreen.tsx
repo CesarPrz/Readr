@@ -1,18 +1,13 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import BookCard from '../components/BookCard';
-import { docToSummary, searchBooks } from '../api/openLibrary';
-import type { OpenLibraryDoc } from '../api/types';
+import { bookRepository } from '../composition/repositories';
+import type { Book } from '../domain/entities/Book';
 import type { SearchStackParamList } from '../navigation/types';
+import { clearResults, runSearch, setQuery } from '../store/searchSlice';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<SearchStackParamList, 'SearchHome'>;
@@ -20,61 +15,38 @@ type Props = NativeStackScreenProps<SearchStackParamList, 'SearchHome'>;
 const DEBOUNCE_MS = 400;
 
 export default function SearchScreen({ navigation }: Props) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<OpenLibraryDoc[]>([]);
-  const [page, setPage] = useState(1);
-  const [numFound, setNumFound] = useState(0);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'loadingMore' | 'error'>('idle');
+  const dispatch = useAppDispatch();
+  const { query, results, page, numFound, status } = useAppSelector((state) => state.search);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const requestIdRef = useRef(0);
-
-  const runSearch = useCallback(async (q: string, nextPage: number) => {
-    const requestId = ++requestIdRef.current;
-    setStatus(nextPage === 1 ? 'loading' : 'loadingMore');
-    try {
-      const result = await searchBooks(q, nextPage);
-      if (requestId !== requestIdRef.current) return; // a newer search superseded this one
-      setResults((prev) => (nextPage === 1 ? result.docs : [...prev, ...result.docs]));
-      setNumFound(result.numFound);
-      setPage(nextPage);
-      setStatus('idle');
-    } catch {
-      if (requestId !== requestIdRef.current) return;
-      setStatus('error');
-    }
-  }, []);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     const trimmed = query.trim();
     if (!trimmed) {
-      requestIdRef.current += 1; // cancel any in-flight search
-      setResults([]);
-      setNumFound(0);
-      setStatus('idle');
+      dispatch(clearResults());
       return;
     }
 
-    debounceRef.current = setTimeout(() => runSearch(trimmed, 1), DEBOUNCE_MS);
+    debounceRef.current = setTimeout(() => dispatch(runSearch({ query: trimmed, page: 1 })), DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, runSearch]);
+  }, [query, dispatch]);
 
   const loadMore = useCallback(() => {
     if (status !== 'idle') return;
     if (results.length >= numFound) return;
-    runSearch(query.trim(), page + 1);
-  }, [status, results.length, numFound, query, page, runSearch]);
+    dispatch(runSearch({ query: query.trim(), page: page + 1 }));
+  }, [status, results.length, numFound, query, page, dispatch]);
 
   const openBook = useCallback(
-    (doc: OpenLibraryDoc) => {
+    (book: Book) => {
       navigation.navigate('BookDetail', {
-        workKey: doc.key,
-        presetTitle: doc.title,
-        presetAuthors: doc.author_name ?? [],
-        presetCoverId: doc.cover_i,
+        workKey: book.id,
+        presetTitle: book.title,
+        presetAuthors: book.authors,
+        presetCoverId: book.coverId,
       });
     },
     [navigation],
@@ -88,7 +60,7 @@ export default function SearchScreen({ navigation }: Props) {
         <Ionicons name="search" size={18} color={colors.secondaryText} />
         <TextInput
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(text) => dispatch(setQuery(text))}
           placeholder="Titre, auteur, ISBN..."
           placeholderTextColor={colors.placeholder}
           style={styles.input}
@@ -106,7 +78,7 @@ export default function SearchScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item) => item.key}
+          keyExtractor={(item) => item.id}
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
@@ -117,17 +89,14 @@ export default function SearchScreen({ navigation }: Props) {
               <Text style={styles.message}>Cherche un titre, un auteur ou un ISBN pour commencer.</Text>
             )
           }
-          renderItem={({ item }) => {
-            const summary = docToSummary(item);
-            return (
-              <BookCard
-                title={summary.title}
-                authors={summary.authors}
-                coverId={summary.coverId}
-                onPress={() => openBook(item)}
-              />
-            );
-          }}
+          renderItem={({ item }) => (
+            <BookCard
+              title={item.title}
+              authors={item.authors}
+              coverUrl={bookRepository.coverUrl(item.coverId, 'M')}
+              onPress={() => openBook(item)}
+            />
+          )}
           ListFooterComponent={status === 'loadingMore' ? <ActivityIndicator color={colors.accentOrange} /> : null}
         />
       )}

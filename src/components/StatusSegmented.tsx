@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { ReadingStatus } from '../storage/library';
+import type { ReadingStatus } from '../domain/entities/LibraryEntry';
 import { colors, radius, spacing } from '../theme/theme';
 
 const OPTIONS: { value: ReadingStatus; label: string }[] = [

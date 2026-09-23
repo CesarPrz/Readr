@@ -1,73 +1,43 @@
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  coverUrl,
-  editionFormatLabel,
-  getEditions,
-  getWorkDetail,
-  hasAudioEdition,
-  workDescriptionText,
-} from '../api/openLibrary';
-import type { Edition } from '../api/types';
 import FormatBadge from '../components/FormatBadge';
 import RatingStars from '../components/RatingStars';
 import StatusSegmented from '../components/StatusSegmented';
-import { useLibrary } from '../storage/LibraryContext';
+import { bookRepository } from '../composition/repositories';
 import type { LibraryStackParamList, SearchStackParamList } from '../navigation/types';
+import { fetchBookDetail } from '../store/bookDetailSlice';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { addBook, patchLibraryEntry, removeBook } from '../store/librarySlice';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<SearchStackParamList | LibraryStackParamList, 'BookDetail'>;
 
 export default function BookDetailScreen({ route }: Props) {
   const { workKey, presetTitle, presetAuthors, presetCoverId } = route.params;
-  const { isInLibrary, getEntry, addBook, removeBook, setStatus, setRating, setNote } = useLibrary();
-
-  const [description, setDescription] = useState<string | undefined>();
-  const [editions, setEditions] = useState<Edition[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const entry = useAppSelector((state) => state.library.entries.find((e) => e.id === workKey));
+  const { detail, status: detailStatus, currentId } = useAppSelector((state) => state.bookDetail);
   const [noteDraft, setNoteDraft] = useState('');
 
-  const entry = getEntry(workKey);
-  const inLibrary = isInLibrary(workKey);
+  const inLibrary = !!entry;
+  const isCurrent = currentId === workKey;
+  const loading = !isCurrent || detailStatus === 'loading';
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    Promise.all([getWorkDetail(workKey), getEditions(workKey)])
-      .then(([detail, editionList]) => {
-        if (cancelled) return;
-        setDescription(workDescriptionText(detail));
-        setEditions(editionList);
-      })
-      .catch(() => {
-        // The preset title/cover already render — a failed enrichment fetch
-        // just means we show less detail, not a broken screen.
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [workKey]);
+    dispatch(fetchBookDetail(workKey));
+  }, [workKey, dispatch]);
 
   useEffect(() => {
     setNoteDraft(entry?.note ?? '');
   }, [entry?.note]);
 
-  const uri = coverUrl(presetCoverId, 'L');
-  const audioAvailable = hasAudioEdition(editions);
+  const uri = bookRepository.coverUrl(presetCoverId, 'L');
+  const audioAvailable = isCurrent && !!detail?.hasAudioEdition;
+  const editions = isCurrent ? (detail?.editions ?? []) : [];
+  const description = isCurrent ? detail?.description : undefined;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -94,10 +64,7 @@ export default function BookDetailScreen({ route }: Props) {
       )}
 
       {inLibrary ? (
-        <Pressable
-          style={styles.removeButton}
-          onPress={() => removeBook(workKey)}
-        >
+        <Pressable style={styles.removeButton} onPress={() => dispatch(removeBook(workKey))}>
           <Ionicons name="trash-outline" size={16} color={colors.danger} />
           <Text style={styles.removeButtonText}>Retirer de ma bibliothèque</Text>
         </Pressable>
@@ -105,12 +72,11 @@ export default function BookDetailScreen({ route }: Props) {
         <Pressable
           style={styles.addButton}
           onPress={() =>
-            addBook({
-              workKey,
-              title: presetTitle,
-              authors: presetAuthors,
-              coverId: presetCoverId,
-            })
+            dispatch(
+              addBook({
+                book: { id: workKey, title: presetTitle, authors: presetAuthors, coverId: presetCoverId },
+              }),
+            )
           }
         >
           <Ionicons name="add" size={18} color={colors.background} />
@@ -121,16 +87,22 @@ export default function BookDetailScreen({ route }: Props) {
       {inLibrary && entry && (
         <View style={styles.libraryControls}>
           <Text style={styles.sectionLabel}>Statut de lecture</Text>
-          <StatusSegmented value={entry.status} onChange={(next) => setStatus(workKey, next)} />
+          <StatusSegmented
+            value={entry.status}
+            onChange={(next) => dispatch(patchLibraryEntry({ id: workKey, patch: { status: next } }))}
+          />
 
           <Text style={[styles.sectionLabel, styles.spacedLabel]}>Ma note</Text>
-          <RatingStars rating={entry.rating} onChange={(rating) => setRating(workKey, rating)} />
+          <RatingStars
+            rating={entry.rating}
+            onChange={(rating) => dispatch(patchLibraryEntry({ id: workKey, patch: { rating } }))}
+          />
 
           <Text style={[styles.sectionLabel, styles.spacedLabel]}>Notes personnelles</Text>
           <TextInput
             value={noteDraft}
             onChangeText={setNoteDraft}
-            onBlur={() => setNote(workKey, noteDraft)}
+            onBlur={() => dispatch(patchLibraryEntry({ id: workKey, patch: { note: noteDraft } }))}
             placeholder="Ce que tu veux retenir de ce livre..."
             placeholderTextColor={colors.placeholder}
             style={styles.noteInput}
@@ -156,7 +128,7 @@ export default function BookDetailScreen({ route }: Props) {
           ) : (
             <View style={styles.editionsWrap}>
               {editions.map((edition) => (
-                <FormatBadge key={edition.key} label={editionFormatLabel(edition)} />
+                <FormatBadge key={edition.id} label={edition.formatLabel} />
               ))}
             </View>
           )}

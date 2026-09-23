@@ -3,9 +3,10 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import BookCard from '../components/BookCard';
-import { useLibrary } from '../storage/LibraryContext';
-import type { ReadingStatus } from '../storage/library';
+import { bookRepository } from '../composition/repositories';
+import type { ReadingStatus } from '../domain/entities/LibraryEntry';
 import type { LibraryStackParamList } from '../navigation/types';
+import { useAppSelector } from '../store/hooks';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<LibraryStackParamList, 'LibraryHome'>;
@@ -19,7 +20,7 @@ const TABS: { value: ReadingStatus; label: string }[] = [
 type SortMode = 'date' | 'rating';
 
 export default function LibraryScreen({ navigation }: Props) {
-  const { entries } = useLibrary();
+  const entries = useAppSelector((state) => state.library.entries);
   const [activeTab, setActiveTab] = useState<ReadingStatus>('to_read');
   const [sortMode, setSortMode] = useState<SortMode>('date');
 
@@ -51,14 +52,9 @@ export default function LibraryScreen({ navigation }: Props) {
         })}
       </View>
 
-      <Pressable
-        style={styles.sortButton}
-        onPress={() => setSortMode((m) => (m === 'date' ? 'rating' : 'date'))}
-      >
+      <Pressable style={styles.sortButton} onPress={() => setSortMode((m) => (m === 'date' ? 'rating' : 'date'))}>
         <Ionicons name="swap-vertical" size={14} color={colors.secondaryText} />
-        <Text style={styles.sortButtonText}>
-          Trié par {sortMode === 'date' ? "date d'ajout" : 'note'}
-        </Text>
+        <Text style={styles.sortButtonText}>Trié par {sortMode === 'date' ? "date d'ajout" : 'note'}</Text>
       </Pressable>
 
       <FlatList
@@ -72,7 +68,7 @@ export default function LibraryScreen({ navigation }: Props) {
           <BookCard
             title={item.title}
             authors={item.authors}
-            coverId={item.coverId}
+            coverUrl={bookRepository.coverUrl(item.coverId, 'M')}
             onPress={() =>
               navigation.navigate('BookDetail', {
                 workKey: item.id,

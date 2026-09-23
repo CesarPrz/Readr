@@ -1,24 +1,21 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { coverUrl } from '../api/openLibrary';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
 type Props = {
   title: string;
   authors: string[];
-  coverId?: number;
+  coverUrl?: string;
   onPress: () => void;
 };
 
-export default function BookCard({ title, authors, coverId, onPress }: Props) {
-  const uri = coverUrl(coverId, 'M');
-
+export default function BookCard({ title, authors, coverUrl, onPress }: Props) {
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
       <View style={styles.coverWrap}>
-        {uri ? (
-          <Image source={{ uri }} style={styles.cover} contentFit="cover" transition={150} />
+        {coverUrl ? (
+          <Image source={{ uri: coverUrl }} style={styles.cover} contentFit="cover" transition={150} />
         ) : (
           <View style={[styles.cover, styles.coverPlaceholder]}>
             <Text style={styles.coverPlaceholderText} numberOfLines={4}>
