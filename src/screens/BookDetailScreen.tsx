@@ -7,14 +7,19 @@ import FormatBadge from '../components/FormatBadge';
 import RatingStars from '../components/RatingStars';
 import StatusSegmented from '../components/StatusSegmented';
 import { bookRepository } from '../composition/repositories';
-import type { DiscoverStackParamList, LibraryStackParamList, SearchStackParamList } from '../navigation/types';
+import type {
+  DiscoverStackParamList,
+  LibraryStackParamList,
+  ScanStackParamList,
+  SearchStackParamList,
+} from '../navigation/types';
 import { fetchBookDetail } from '../store/bookDetailSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addBook, patchLibraryEntry, removeBook } from '../store/librarySlice';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<
-  SearchStackParamList | DiscoverStackParamList | LibraryStackParamList,
+  SearchStackParamList | DiscoverStackParamList | ScanStackParamList | LibraryStackParamList,
   'BookDetail'
 >;
 

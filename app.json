@@ -29,8 +29,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-status-bar",
-      "expo-image"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Autorise Readr à utiliser l'appareil photo pour scanner le code-barres d'un livre."
+        }
+      ]
     ]
   }
 }

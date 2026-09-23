@@ -1,7 +1,7 @@
 import type { Book } from '../../domain/entities/Book';
 import type { BookDetail } from '../../domain/entities/BookDetail';
 import type { Edition } from '../../domain/entities/Edition';
-import type { OpenLibraryDoc, RawEdition, WorkDetail } from './types';
+import type { OpenLibraryDoc, RawEdition, RawIsbnEdition, WorkDetail } from './types';
 
 /**
  * Open Library's search index frequently holds several separate "work"
@@ -77,6 +77,29 @@ function workDescriptionText(detail: WorkDetail): string | undefined {
 
 function languageCode(ref: { key: string }): string {
   return ref.key.split('/').pop() ?? ref.key;
+}
+
+/**
+ * Construit un `Book` directement depuis une fiche catalogue (`/isbn/<isbn>.json`)
+ * — le repli de `findByIsbn` quand l'ISBN scanné n'est pas dans l'index de
+ * recherche. Moins riche qu'un résultat de recherche classique (pas d'année de
+ * première publication, pas de fusion multi-éditions), mais suffisant pour
+ * identifier le livre scanné et l'ajouter à la bibliothèque.
+ */
+export function catalogEntryToBook(
+  workKey: string,
+  edition: RawIsbnEdition,
+  work: WorkDetail | null,
+  authors: string[],
+): Book {
+  return {
+    id: workKey,
+    workKeys: [workKey],
+    title: work?.title ?? edition.title ?? 'Titre inconnu',
+    authors,
+    coverId: edition.covers?.[0] ?? work?.covers?.[0],
+    languages: dedupe((edition.languages ?? []).map(languageCode)),
+  };
 }
 
 function dedupeEditionsByKey(editions: RawEdition[]): RawEdition[] {

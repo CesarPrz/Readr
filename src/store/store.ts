@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import bookDetailReducer from './bookDetailSlice';
 import discoverReducer from './discoverSlice';
 import libraryReducer from './librarySlice';
+import scanReducer from './scanSlice';
 import searchReducer from './searchSlice';
 
 export const store = configureStore({
@@ -10,6 +11,7 @@ export const store = configureStore({
     search: searchReducer,
     bookDetail: bookDetailReducer,
     discover: discoverReducer,
+    scan: scanReducer,
   },
 });
 

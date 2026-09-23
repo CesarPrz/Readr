@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../theme/theme';
 import SearchScreen from '../screens/SearchScreen';
+import ScanScreen from '../screens/ScanScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
@@ -11,11 +12,13 @@ import type {
   DiscoverStackParamList,
   LibraryStackParamList,
   RootTabParamList,
+  ScanStackParamList,
   SearchStackParamList,
 } from './types';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const SearchStack = createNativeStackNavigator<SearchStackParamList>();
+const ScanStack = createNativeStackNavigator<ScanStackParamList>();
 const DiscoverStack = createNativeStackNavigator<DiscoverStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
 
@@ -32,6 +35,15 @@ function SearchStackNavigator() {
       <SearchStack.Screen name="SearchHome" component={SearchScreen} options={{ title: 'Recherche' }} />
       <SearchStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
     </SearchStack.Navigator>
+  );
+}
+
+function ScanStackNavigator() {
+  return (
+    <ScanStack.Navigator screenOptions={stackScreenOptions}>
+      <ScanStack.Screen name="ScanHome" component={ScanScreen} options={{ title: 'Scanner' }} />
+      <ScanStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
+    </ScanStack.Navigator>
   );
 }
 
@@ -71,6 +83,13 @@ export default function RootNavigator() {
         component={SearchStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Scanner"
+        component={ScanStackNavigator}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="barcode-outline" color={color} size={size} />,
         }}
       />
       <Tab.Screen

@@ -15,6 +15,8 @@ export type SearchBooksResult = {
  */
 export interface BookRepository {
   search(query: string, page: number): Promise<SearchBooksResult>;
+  /** Looks up a single book by its ISBN (as scanned from a barcode, for instance). `undefined` when nothing matches. */
+  findByIsbn(isbn: string): Promise<Book | undefined>;
   /** `workIds` is every work key merged into one `Book` (see `Book.workKeys`) — their editions/description are merged into one detail. */
   getDetail(workIds: string[]): Promise<BookDetail>;
   /** Pure, side-effect-free URL formatting — safe for screens to call directly. */

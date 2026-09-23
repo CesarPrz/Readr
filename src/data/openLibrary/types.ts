@@ -22,6 +22,20 @@ export type WorkDetail = {
   title: string;
   description?: WorkDescription;
   covers?: number[];
+  authors?: { author: { key: string } }[];
+};
+
+/**
+ * Fiche catalogue brute renvoyée par `/isbn/<isbn>.json` — une résolution directe
+ * par clé dans le catalogue, distincte de l'index de recherche (search.json) et
+ * avec une bien meilleure couverture des éditions peu indexées (ex. poche français).
+ * Ne donne ni le nom des auteurs (juste leur clé) ni le nombre d'éditions.
+ */
+export type RawIsbnEdition = {
+  title?: string;
+  works?: { key: string }[];
+  covers?: number[];
+  languages?: { key: string }[];
 };
 
 export type RawEdition = {

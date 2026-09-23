@@ -1,7 +1,9 @@
+import type { Book } from '../../domain/entities/Book';
 import type { BookDetail } from '../../domain/entities/BookDetail';
 import type { BookRepository, SearchBooksResult } from '../../domain/repositories/BookRepository';
-import { docsToBooks, toBookDetail } from './mappers';
-import type { EditionsResponse, RawEdition, SearchResponse, WorkDetail } from './types';
+import { findByIsbnOnGoogleBooks } from '../googleBooks/googleBooksClient';
+import { catalogEntryToBook, docsToBooks, toBookDetail } from './mappers';
+import type { EditionsResponse, RawEdition, RawIsbnEdition, SearchResponse, WorkDetail } from './types';
 
 const BASE_URL = 'https://openlibrary.org';
 const COVERS_URL = 'https://covers.openlibrary.org';
@@ -20,6 +22,25 @@ export class OpenLibraryBookRepository implements BookRepository {
     if (!res.ok) throw new Error(`La recherche a échoué (${res.status})`);
     const data: SearchResponse = await res.json();
     return { books: docsToBooks(data.docs), numFound: data.numFound, fetchedCount: data.docs.length };
+  }
+
+  async findByIsbn(isbn: string): Promise<Book | undefined> {
+    const { books } = await this.search(`isbn:${isbn}`, 1);
+    if (books.length > 0) return books[0];
+
+    // L'index de recherche (search.json) n'indexe pas toutes les éditions du
+    // catalogue — beaucoup d'éditions de poche françaises (ex. J'ai lu, Le Livre
+    // de Poche) en sont absentes alors qu'elles existent bien chez Open Library.
+    // `/isbn/<isbn>.json` interroge le catalogue brut directement par clé et
+    // trouve souvent l'édition même quand la recherche échoue.
+    const fromCatalog = await this.findByIsbnInCatalog(isbn);
+    if (fromCatalog) return fromCatalog;
+
+    // Dernier recours : le livre n'existe carrément pas chez Open Library (ni
+    // index, ni catalogue). Open Library reste orienté fonds de bibliothèques
+    // et couvre mal certaines éditions commerciales grand public — Google
+    // Books les couvre mieux. Voir data/googleBooks/googleBooksClient.ts.
+    return findByIsbnOnGoogleBooks(isbn);
   }
 
   async getDetail(workIds: string[]): Promise<BookDetail> {
@@ -56,5 +77,36 @@ export class OpenLibraryBookRepository implements BookRepository {
     if (!res.ok) return []; // not every work has edition data — "none found", not a hard error
     const data: EditionsResponse = await res.json();
     return data.entries ?? [];
+  }
+
+  /** Repli de `findByIsbn` : résolution directe par clé dans le catalogue brut, hors index de recherche. */
+  private async findByIsbnInCatalog(isbn: string): Promise<Book | undefined> {
+    const res = await fetch(`${BASE_URL}/isbn/${isbn}.json`);
+    if (!res.ok) return undefined; // vraiment introuvable, y compris dans le catalogue brut
+
+    const edition: RawIsbnEdition = await res.json();
+    const workKey = edition.works?.[0]?.key;
+    if (!workKey) return undefined; // édition orpheline sans œuvre associée — cas très rare
+
+    const work = await this.fetchWorkDetail(workKey).catch(() => null);
+    const authors = await this.fetchAuthorNames(work?.authors ?? []);
+    return catalogEntryToBook(workKey, edition, work, authors);
+  }
+
+  /** `/isbn/<isbn>.json` et la fiche œuvre ne donnent que des clés auteur — il faut un appel par auteur pour son nom. */
+  private async fetchAuthorNames(authors: { author: { key: string } }[]): Promise<string[]> {
+    const names = await Promise.all(
+      authors.map(async ({ author }) => {
+        try {
+          const res = await fetch(`${BASE_URL}${author.key}.json`);
+          if (!res.ok) return undefined;
+          const data: { name?: string } = await res.json();
+          return data.name;
+        } catch {
+          return undefined;
+        }
+      }),
+    );
+    return names.filter((n): n is string => !!n);
   }
 }
