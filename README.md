@@ -1,97 +1,35 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Readr
 
-# Getting Started
+Appli mobile de recherche de livres (React Native + Expo), sans backend ni compte : recherche via l'API publique Open Library, fiche détail avec éditions/formats disponibles, et bibliothèque personnelle stockée localement sur l'appareil.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Démarrer
 
-## Step 1: Start Metro
+Depuis ce dossier, en local (Node ≥ 18) :
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+```bash
+npm install
+npx expo install --fix   # aligne les versions natives sur le SDK Expo installé
+npx expo start
 ```
 
-## Step 2: Build and run your app
+Scanne le QR code avec l'app **Expo Go** (iOS/Android) pour lancer l'appli sans build natif.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+> Les fichiers ont été générés hors ligne (pas d'accès au registre npm depuis l'environnement qui les a écrits), donc les versions de dépendances dans `package.json` sont volontairement larges. `npx expo install --fix` corrige automatiquement toute incohérence de version avant le premier lancement.
 
-### Android
+## Structure
 
-```sh
-# Using npm
-npm run android
+- `src/api/` — appels à l'API Open Library (recherche, détail d'œuvre, éditions, URL de couverture)
+- `src/storage/` — bibliothèque locale (AsyncStorage) + contexte React pour les composants
+- `src/theme/` — couleurs, espacements, typographie (thème sombre inspiré de la référence UI)
+- `src/navigation/` — barre d'onglets (Recherche / Ma bibliothèque) + piles de navigation
+- `src/screens/` — Recherche, Fiche livre, Ma bibliothèque
+- `src/components/` — carte livre, badge de format, étoiles de notation, sélecteur de statut
 
-# OR using Yarn
-yarn android
-```
+## Choix techniques (vs. le cahier des charges initial)
 
-### iOS
+- **FlatList** plutôt que FlashList, et **Context + AsyncStorage** plutôt que React Query : moins de dépendances tierces à faire correspondre à la main sans pouvoir tester l'installation depuis l'environnement de génération. Fonctionnellement équivalent pour ce volume de données ; à migrer facilement plus tard si besoin de perf sur de très longues listes.
+- Aucune donnée d'audiobook commercial (type Audible) n'existe en accès public : l'appli affiche un badge « disponible en édition audio » uniquement quand Open Library référence un format audio, sans lecteur ni lien d'achat.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Prochaines étapes possibles
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Voir la section Roadmap du cahier des charges (doc Claude) : mode sombre/clair, LibriVox pour les audiobooks du domaine public, partage vers d'autres applis, widget d'écran d'accueil.
