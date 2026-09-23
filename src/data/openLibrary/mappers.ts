@@ -3,14 +3,63 @@ import type { BookDetail } from '../../domain/entities/BookDetail';
 import type { Edition } from '../../domain/entities/Edition';
 import type { OpenLibraryDoc, RawEdition, WorkDetail } from './types';
 
-export function docToBook(doc: OpenLibraryDoc): Book {
+/**
+ * Open Library's search index frequently holds several separate "work"
+ * records for what is really the same book — duplicate catalog entries, and
+ * translations that were never linked to a shared work. This groups search
+ * hits that are very likely the same book (same normalized title + first
+ * author) into a single `Book`, merging their work keys and languages so the
+ * detail screen can fetch and combine editions from all of them.
+ *
+ * This is a heuristic, not a guarantee: two unrelated books that happen to
+ * share a title and a first author's name would be merged too. Grouping only
+ * happens within the docs of a single fetched page, not across pages.
+ */
+export function docsToBooks(docs: OpenLibraryDoc[]): Book[] {
+  const groups = new Map<string, OpenLibraryDoc[]>();
+  for (const doc of docs) {
+    const key = groupKey(doc);
+    const group = groups.get(key);
+    if (group) group.push(doc);
+    else groups.set(key, [doc]);
+  }
+
+  return Array.from(groups.values(), docsToBook);
+}
+
+function groupKey(doc: OpenLibraryDoc): string {
+  const author = doc.author_name?.[0] ?? '';
+  return `${normalize(doc.title)}::${normalize(author)}`;
+}
+
+function normalize(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // strip accents
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function docsToBook(group: OpenLibraryDoc[]): Book {
+  // The doc with the most known editions is taken as the most complete/authoritative record for title/author/year.
+  const primary = [...group].sort((a, b) => (b.edition_count ?? 0) - (a.edition_count ?? 0))[0];
+  const coverId = group.find((d) => d.cover_i !== undefined)?.cover_i ?? primary.cover_i;
+  const years = group.map((d) => d.first_publish_year).filter((y): y is number => y !== undefined);
+
   return {
-    id: doc.key,
-    title: doc.title,
-    authors: doc.author_name ?? [],
-    coverId: doc.cover_i,
-    firstPublishYear: doc.first_publish_year,
+    id: primary.key,
+    workKeys: group.map((d) => d.key),
+    title: primary.title,
+    authors: primary.author_name ?? [],
+    coverId,
+    firstPublishYear: years.length > 0 ? Math.min(...years) : undefined,
+    languages: dedupe(group.flatMap((d) => d.language ?? [])),
   };
+}
+
+function dedupe<T>(values: T[]): T[] {
+  return Array.from(new Set(values));
 }
 
 function editionFormatLabel(edition: RawEdition): string {
@@ -26,11 +75,31 @@ function workDescriptionText(detail: WorkDetail): string | undefined {
   return typeof detail.description === 'string' ? detail.description : detail.description.value;
 }
 
-export function toBookDetail(workId: string, detail: WorkDetail, rawEditions: RawEdition[]): BookDetail {
+function languageCode(ref: { key: string }): string {
+  return ref.key.split('/').pop() ?? ref.key;
+}
+
+function dedupeEditionsByKey(editions: RawEdition[]): RawEdition[] {
+  const seen = new Set<string>();
+  const result: RawEdition[] = [];
+  for (const edition of editions) {
+    if (seen.has(edition.key)) continue;
+    seen.add(edition.key);
+    result.push(edition);
+  }
+  return result;
+}
+
+/** Merges the work details and editions fetched for every work key of a (possibly grouped) book into one detail. */
+export function toBookDetail(primaryId: string, details: WorkDetail[], rawEditionsPerWork: RawEdition[][]): BookDetail {
+  const description = details.map(workDescriptionText).find((d): d is string => !!d);
+  const allRawEditions = dedupeEditionsByKey(rawEditionsPerWork.flat());
+
   return {
-    id: workId,
-    description: workDescriptionText(detail),
-    editions: rawEditions.map(rawEditionToEdition),
-    hasAudioEdition: rawEditions.some((e) => (e.physical_format ?? '').toLowerCase().includes('audio')),
+    id: primaryId,
+    description,
+    editions: allRawEditions.map(rawEditionToEdition),
+    hasAudioEdition: allRawEditions.some((e) => (e.physical_format ?? '').toLowerCase().includes('audio')),
+    languages: dedupe(allRawEditions.flatMap((e) => (e.languages ?? []).map(languageCode))),
   };
 }

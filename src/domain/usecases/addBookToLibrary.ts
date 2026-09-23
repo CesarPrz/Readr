@@ -13,9 +13,11 @@ export async function addBookToLibrary(
 
   const entry: LibraryEntry = {
     id: book.id,
+    workKeys: book.workKeys,
     title: book.title,
     authors: book.authors,
     coverId: book.coverId,
+    languages: book.languages,
     status,
     addedAt: new Date().toISOString(),
   };

@@ -6,4 +6,5 @@ export type BookDetail = {
   description?: string;
   editions: Edition[];
   hasAudioEdition: boolean;
+  languages: string[]; // derived from the fetched editions across every merged work key
 };

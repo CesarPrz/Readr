@@ -2,8 +2,9 @@ import type { Book } from '../entities/Book';
 import type { BookDetail } from '../entities/BookDetail';
 
 export type SearchBooksResult = {
-  books: Book[];
-  numFound: number;
+  books: Book[]; // already de-duplicated/grouped — may be fewer than fetchedCount
+  numFound: number; // total raw matches reported by the catalog, before grouping
+  fetchedCount: number; // raw doc count returned for this page, before grouping — used to know when pagination is exhausted
 };
 
 /**
@@ -14,7 +15,8 @@ export type SearchBooksResult = {
  */
 export interface BookRepository {
   search(query: string, page: number): Promise<SearchBooksResult>;
-  getDetail(workId: string): Promise<BookDetail>;
+  /** `workIds` is every work key merged into one `Book` (see `Book.workKeys`) — their editions/description are merged into one detail. */
+  getDetail(workIds: string[]): Promise<BookDetail>;
   /** Pure, side-effect-free URL formatting — safe for screens to call directly. */
   coverUrl(coverId: number | undefined, size?: 'S' | 'M' | 'L'): string | undefined;
 }

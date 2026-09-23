@@ -1,6 +1,6 @@
 import type { BookDetail } from '../../domain/entities/BookDetail';
 import type { BookRepository, SearchBooksResult } from '../../domain/repositories/BookRepository';
-import { docToBook, toBookDetail } from './mappers';
+import { docsToBooks, toBookDetail } from './mappers';
 import type { EditionsResponse, RawEdition, SearchResponse, WorkDetail } from './types';
 
 const BASE_URL = 'https://openlibrary.org';
@@ -11,23 +11,38 @@ const PAGE_SIZE = 20;
 export class OpenLibraryBookRepository implements BookRepository {
   async search(query: string, page: number): Promise<SearchBooksResult> {
     const offset = (page - 1) * PAGE_SIZE;
-    const fields = ['key', 'title', 'author_name', 'first_publish_year', 'cover_i', 'edition_count'].join(',');
+    const fields = ['key', 'title', 'author_name', 'first_publish_year', 'cover_i', 'edition_count', 'language'].join(
+      ',',
+    );
     const url = `${BASE_URL}/search.json?q=${encodeURIComponent(query)}&limit=${PAGE_SIZE}&offset=${offset}&fields=${fields}`;
 
     const res = await fetch(url);
     if (!res.ok) throw new Error(`La recherche a échoué (${res.status})`);
     const data: SearchResponse = await res.json();
-    return { books: data.docs.map(docToBook), numFound: data.numFound };
+    return { books: docsToBooks(data.docs), numFound: data.numFound, fetchedCount: data.docs.length };
   }
 
-  async getDetail(workId: string): Promise<BookDetail> {
-    const [detail, rawEditions] = await Promise.all([this.fetchWorkDetail(workId), this.fetchEditions(workId)]);
-    return toBookDetail(workId, detail, rawEditions);
+  async getDetail(workIds: string[]): Promise<BookDetail> {
+    const results = await Promise.all(workIds.map((id) => this.fetchWorkAndEditions(id)));
+    const details = results.map((r) => r.detail).filter((d): d is WorkDetail => d !== null);
+    const editionsPerWork = results.map((r) => r.editions);
+    return toBookDetail(workIds[0], details, editionsPerWork);
   }
 
   coverUrl(coverId?: number, size: 'S' | 'M' | 'L' = 'M'): string | undefined {
     if (!coverId) return undefined;
     return `${COVERS_URL}/b/id/${coverId}-${size}.jpg`;
+  }
+
+  /** One merged book can carry several work keys — a bad/stale one among them shouldn't sink the whole detail fetch. */
+  private async fetchWorkAndEditions(workId: string): Promise<{ detail: WorkDetail | null; editions: RawEdition[] }> {
+    const editions = await this.fetchEditions(workId); // already resilient — returns [] rather than throwing
+    try {
+      const detail = await this.fetchWorkDetail(workId);
+      return { detail, editions };
+    } catch {
+      return { detail: null, editions };
+    }
   }
 
   private async fetchWorkDetail(workId: string): Promise<WorkDetail> {

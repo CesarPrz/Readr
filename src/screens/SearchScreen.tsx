@@ -16,7 +16,7 @@ const DEBOUNCE_MS = 400;
 
 export default function SearchScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
-  const { query, results, page, numFound, status } = useAppSelector((state) => state.search);
+  const { query, results, page, rawFetched, numFound, status } = useAppSelector((state) => state.search);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -36,17 +36,21 @@ export default function SearchScreen({ navigation }: Props) {
 
   const loadMore = useCallback(() => {
     if (status !== 'idle') return;
-    if (results.length >= numFound) return;
+    // Compared against the raw (pre-grouping) count: grouping can shrink `results`
+    // well below `numFound`, so comparing `results.length` here could loop forever.
+    if (rawFetched >= numFound) return;
     dispatch(runSearch({ query: query.trim(), page: page + 1 }));
-  }, [status, results.length, numFound, query, page, dispatch]);
+  }, [status, rawFetched, numFound, query, page, dispatch]);
 
   const openBook = useCallback(
     (book: Book) => {
       navigation.navigate('BookDetail', {
         workKey: book.id,
+        presetWorkKeys: book.workKeys,
         presetTitle: book.title,
         presetAuthors: book.authors,
         presetCoverId: book.coverId,
+        presetLanguages: book.languages,
       });
     },
     [navigation],

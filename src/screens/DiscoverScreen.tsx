@@ -26,9 +26,11 @@ export default function DiscoverScreen({ navigation }: Props) {
     (book: Book) => {
       navigation.navigate('BookDetail', {
         workKey: book.id,
+        presetWorkKeys: book.workKeys,
         presetTitle: book.title,
         presetAuthors: book.authors,
         presetCoverId: book.coverId,
+        presetLanguages: book.languages,
       });
     },
     [navigation],

@@ -72,9 +72,11 @@ export default function LibraryScreen({ navigation }: Props) {
             onPress={() =>
               navigation.navigate('BookDetail', {
                 workKey: item.id,
+                presetWorkKeys: item.workKeys,
                 presetTitle: item.title,
                 presetAuthors: item.authors,
                 presetCoverId: item.coverId,
+                presetLanguages: item.languages,
               })
             }
           />

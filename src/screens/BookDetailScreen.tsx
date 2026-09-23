@@ -18,8 +18,33 @@ type Props = NativeStackScreenProps<
   'BookDetail'
 >;
 
+// Display-only labels for Open Library's language codes — purely a formatting
+// concern for this screen, not a domain rule. Falls back to the raw code.
+const LANGUAGE_LABELS: Record<string, string> = {
+  eng: 'Anglais',
+  fre: 'Français',
+  fra: 'Français',
+  spa: 'Espagnol',
+  ger: 'Allemand',
+  deu: 'Allemand',
+  ita: 'Italien',
+  por: 'Portugais',
+  dut: 'Néerlandais',
+  nld: 'Néerlandais',
+  jpn: 'Japonais',
+  chi: 'Chinois',
+  zho: 'Chinois',
+  rus: 'Russe',
+  ara: 'Arabe',
+  kor: 'Coréen',
+};
+
+function languageLabel(code: string): string {
+  return LANGUAGE_LABELS[code] ?? code.toUpperCase();
+}
+
 export default function BookDetailScreen({ route }: Props) {
-  const { workKey, presetTitle, presetAuthors, presetCoverId } = route.params;
+  const { workKey, presetWorkKeys, presetTitle, presetAuthors, presetCoverId, presetLanguages } = route.params;
   const dispatch = useAppDispatch();
   const entry = useAppSelector((state) => state.library.entries.find((e) => e.id === workKey));
   const { detail, status: detailStatus, currentId } = useAppSelector((state) => state.bookDetail);
@@ -30,8 +55,8 @@ export default function BookDetailScreen({ route }: Props) {
   const loading = !isCurrent || detailStatus === 'loading';
 
   useEffect(() => {
-    dispatch(fetchBookDetail(workKey));
-  }, [workKey, dispatch]);
+    dispatch(fetchBookDetail(presetWorkKeys));
+  }, [presetWorkKeys, dispatch]);
 
   useEffect(() => {
     setNoteDraft(entry?.note ?? '');
@@ -41,6 +66,9 @@ export default function BookDetailScreen({ route }: Props) {
   const audioAvailable = isCurrent && !!detail?.hasAudioEdition;
   const editions = isCurrent ? (detail?.editions ?? []) : [];
   const description = isCurrent ? detail?.description : undefined;
+  // The detail fetch (from editions) is the authoritative source once it lands;
+  // until then, fall back to what search already told us about this book.
+  const languages = isCurrent && detail?.languages.length ? detail.languages : presetLanguages;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -77,7 +105,14 @@ export default function BookDetailScreen({ route }: Props) {
           onPress={() =>
             dispatch(
               addBook({
-                book: { id: workKey, title: presetTitle, authors: presetAuthors, coverId: presetCoverId },
+                book: {
+                  id: workKey,
+                  workKeys: presetWorkKeys,
+                  title: presetTitle,
+                  authors: presetAuthors,
+                  coverId: presetCoverId,
+                  languages: presetLanguages,
+                },
               }),
             )
           }
@@ -134,6 +169,13 @@ export default function BookDetailScreen({ route }: Props) {
                 <FormatBadge key={edition.id} label={edition.formatLabel} />
               ))}
             </View>
+          )}
+
+          {languages.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, styles.spacedLabel]}>Langues disponibles</Text>
+              <Text style={styles.description}>{languages.map(languageLabel).join(', ')}</Text>
+            </>
           )}
         </>
       )}

@@ -9,12 +9,20 @@ type SearchState = {
   query: string;
   results: Book[];
   page: number;
-  numFound: number;
+  numFound: number; // raw match count reported by the catalog, before grouping
+  rawFetched: number; // raw docs fetched so far, before grouping — grouping can shrink `results` well below `numFound`
   status: SearchStatus;
   latestRequestId?: string;
 };
 
-const initialState: SearchState = { query: '', results: [], page: 1, numFound: 0, status: 'idle' };
+const initialState: SearchState = {
+  query: '',
+  results: [],
+  page: 1,
+  numFound: 0,
+  rawFetched: 0,
+  status: 'idle',
+};
 
 export const runSearch = createAsyncThunk('search/run', ({ query, page }: { query: string; page: number }) =>
   searchBooks(bookRepository, query, page).then((result) => ({ ...result, page })),
@@ -30,6 +38,7 @@ const searchSlice = createSlice({
     clearResults(state) {
       state.results = [];
       state.numFound = 0;
+      state.rawFetched = 0;
       state.page = 1;
       state.status = 'idle';
       state.latestRequestId = undefined; // any in-flight response becomes stale
@@ -43,8 +52,9 @@ const searchSlice = createSlice({
       })
       .addCase(runSearch.fulfilled, (state, action) => {
         if (action.meta.requestId !== state.latestRequestId) return; // superseded by a newer search
-        const { books, numFound, page } = action.payload;
+        const { books, numFound, fetchedCount, page } = action.payload;
         state.results = page === 1 ? books : [...state.results, ...books];
+        state.rawFetched = page === 1 ? fetchedCount : state.rawFetched + fetchedCount;
         state.numFound = numFound;
         state.page = page;
         state.status = 'idle';

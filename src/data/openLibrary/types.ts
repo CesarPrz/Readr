@@ -6,6 +6,7 @@ export type OpenLibraryDoc = {
   first_publish_year?: number;
   cover_i?: number;
   edition_count?: number;
+  language?: string[]; // languages found across this work's editions, per Open Library's own aggregation
 };
 
 export type SearchResponse = {
@@ -30,6 +31,7 @@ export type RawEdition = {
   physical_format?: string;
   publishers?: string[];
   covers?: number[];
+  languages?: { key: string }[]; // e.g. [{ key: "/languages/fre" }]
 };
 
 export type EditionsResponse = {
