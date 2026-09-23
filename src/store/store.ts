@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import bookDetailReducer from './bookDetailSlice';
+import discoverReducer from './discoverSlice';
 import libraryReducer from './librarySlice';
 import searchReducer from './searchSlice';
 
@@ -8,6 +9,7 @@ export const store = configureStore({
     library: libraryReducer,
     search: searchReducer,
     bookDetail: bookDetailReducer,
+    discover: discoverReducer,
   },
 });
 

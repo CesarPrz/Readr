@@ -15,6 +15,11 @@ export type SearchStackParamList = {
   BookDetail: BookDetailParams;
 };
 
+export type DiscoverStackParamList = {
+  DiscoverHome: undefined;
+  BookDetail: BookDetailParams;
+};
+
 export type LibraryStackParamList = {
   LibraryHome: undefined;
   BookDetail: BookDetailParams;
@@ -22,5 +27,6 @@ export type LibraryStackParamList = {
 
 export type RootTabParamList = {
   Recherche: NavigatorScreenParams<SearchStackParamList>;
+  Découvrir: NavigatorScreenParams<DiscoverStackParamList>;
   'Ma bibliothèque': NavigatorScreenParams<LibraryStackParamList>;
 };

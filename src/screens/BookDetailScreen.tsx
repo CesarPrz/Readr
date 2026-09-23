@@ -7,13 +7,16 @@ import FormatBadge from '../components/FormatBadge';
 import RatingStars from '../components/RatingStars';
 import StatusSegmented from '../components/StatusSegmented';
 import { bookRepository } from '../composition/repositories';
-import type { LibraryStackParamList, SearchStackParamList } from '../navigation/types';
+import type { DiscoverStackParamList, LibraryStackParamList, SearchStackParamList } from '../navigation/types';
 import { fetchBookDetail } from '../store/bookDetailSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addBook, patchLibraryEntry, removeBook } from '../store/librarySlice';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
-type Props = NativeStackScreenProps<SearchStackParamList | LibraryStackParamList, 'BookDetail'>;
+type Props = NativeStackScreenProps<
+  SearchStackParamList | DiscoverStackParamList | LibraryStackParamList,
+  'BookDetail'
+>;
 
 export default function BookDetailScreen({ route }: Props) {
   const { workKey, presetTitle, presetAuthors, presetCoverId } = route.params;

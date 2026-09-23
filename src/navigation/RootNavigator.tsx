@@ -4,12 +4,19 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../theme/theme';
 import SearchScreen from '../screens/SearchScreen';
+import DiscoverScreen from '../screens/DiscoverScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
-import type { LibraryStackParamList, RootTabParamList, SearchStackParamList } from './types';
+import type {
+  DiscoverStackParamList,
+  LibraryStackParamList,
+  RootTabParamList,
+  SearchStackParamList,
+} from './types';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const SearchStack = createNativeStackNavigator<SearchStackParamList>();
+const DiscoverStack = createNativeStackNavigator<DiscoverStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
 
 const stackScreenOptions = {
@@ -25,6 +32,15 @@ function SearchStackNavigator() {
       <SearchStack.Screen name="SearchHome" component={SearchScreen} options={{ title: 'Recherche' }} />
       <SearchStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
     </SearchStack.Navigator>
+  );
+}
+
+function DiscoverStackNavigator() {
+  return (
+    <DiscoverStack.Navigator screenOptions={stackScreenOptions}>
+      <DiscoverStack.Screen name="DiscoverHome" component={DiscoverScreen} options={{ title: 'Découvrir' }} />
+      <DiscoverStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
+    </DiscoverStack.Navigator>
   );
 }
 
@@ -55,6 +71,13 @@ export default function RootNavigator() {
         component={SearchStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Découvrir"
+        component={DiscoverStackNavigator}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="sparkles" color={color} size={size} />,
         }}
       />
       <Tab.Screen
