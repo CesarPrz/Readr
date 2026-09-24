@@ -9,6 +9,12 @@ export type Book = {
   // cover ids (ex. Google Books). Screens prefer this over `coverId` when
   // present: `book.coverUrl ?? bookRepository.coverUrl(book.coverId, size)`.
   coverUrl?: string;
+  // Résumé déjà connu, pour les sources sans fiche "œuvre" Open Library à
+  // interroger pour un résumé (ex. Google Books) — voir aussi
+  // `BookDetailParams.presetDescription`. `BookDetail.description` (récupéré
+  // depuis Open Library une fois la fiche détail chargée) reste prioritaire
+  // quand il existe, ce champ ne sert que de repli immédiat.
+  description?: string;
   firstPublishYear?: number;
   languages: string[]; // language codes aggregated across the merged works, e.g. ['eng', 'fre']
 };

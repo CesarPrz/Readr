@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
+import authReducer from './authSlice';
 import bookDetailReducer from './bookDetailSlice';
 import discoverReducer from './discoverSlice';
 import languageResultsReducer from './languageResultsSlice';
@@ -14,6 +15,7 @@ export const store = configureStore({
     bookDetail: bookDetailReducer,
     discover: discoverReducer,
     scan: scanReducer,
+    auth: authReducer,
   },
 });
 

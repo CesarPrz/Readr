@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import BookCard from '../components/BookCard';
 import { bookRepository } from '../composition/repositories';
 import type { Book } from '../domain/entities/Book';
+import type { RecommendationGroup } from '../domain/entities/RecommendationGroup';
 import type { DiscoverStackParamList } from '../navigation/types';
 import { fetchRecommendations } from '../store/discoverSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -11,9 +12,11 @@ import { colors, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'DiscoverHome'>;
 
+const ROW_CARD_WIDTH = 120;
+
 export default function DiscoverScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
-  const { recommendations, status } = useAppSelector((state) => state.discover);
+  const { groups, status } = useAppSelector((state) => state.discover);
   const libraryCount = useAppSelector((state) => state.library.entries.length);
 
   useEffect(() => {
@@ -31,41 +34,54 @@ export default function DiscoverScreen({ navigation }: Props) {
         presetAuthors: book.authors,
         presetCoverId: book.coverId,
         presetCoverUrl: book.coverUrl,
+        presetDescription: book.description,
         presetLanguages: book.languages,
       });
     },
     [navigation],
   );
 
+  const renderGroup = useCallback(
+    ({ item: group }: { item: RecommendationGroup }) => (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{group.title}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowContent}>
+          {group.books.map((book) => (
+            <BookCard
+              key={book.id}
+              title={book.title}
+              authors={book.authors}
+              coverUrl={book.coverUrl ?? bookRepository.coverUrl(book.coverId, 'M')}
+              onPress={() => openBook(book)}
+              width={ROW_CARD_WIDTH}
+            />
+          ))}
+        </ScrollView>
+      </View>
+    ),
+    [openBook],
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.hero}>Découvrir</Text>
-      <Text style={styles.subtitle}>Basé sur les livres lus et ajoutés à ta bibliothèque</Text>
+      <Text style={styles.subtitle}>Basé sur ce que tu as lu et aimé dans ta bibliothèque</Text>
 
-      {status === 'loading' && recommendations.length === 0 ? (
+      {status === 'loading' && groups.length === 0 ? (
         <ActivityIndicator style={styles.loader} color={colors.accentOrange} />
       ) : (
         <FlatList
-          data={recommendations}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
+          data={groups}
+          keyExtractor={(group) => group.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.message}>
               {libraryCount === 0
                 ? 'Ajoute des livres à ta bibliothèque pour recevoir des recommandations.'
-                : "Pas de recommandation pour l'instant — réessaie plus tard."}
+                : "Pas de recommandation pour l'instant — marque un livre comme lu ou aimé pour en obtenir."}
             </Text>
           }
-          renderItem={({ item }) => (
-            <BookCard
-              title={item.title}
-              authors={item.authors}
-              coverUrl={item.coverUrl ?? bookRepository.coverUrl(item.coverId, 'M')}
-              onPress={() => openBook(item)}
-            />
-          )}
+          renderItem={renderGroup}
         />
       )}
     </View>
@@ -90,8 +106,17 @@ const styles = StyleSheet.create({
   list: {
     paddingBottom: spacing.xl,
   },
-  row: {
-    justifyContent: 'space-between',
+  section: {
+    marginBottom: spacing.lg,
+  },
+  sectionTitle: {
+    ...typography.title,
+    fontSize: 16,
+    marginBottom: spacing.sm,
+  },
+  rowContent: {
+    gap: spacing.md,
+    paddingRight: spacing.lg,
   },
   loader: {
     marginTop: spacing.xl,

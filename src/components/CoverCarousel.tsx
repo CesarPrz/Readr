@@ -6,6 +6,7 @@ import { colors, radius, spacing } from '../theme/theme';
 
 const COVER_WIDTH = 180;
 const COVER_ASPECT_RATIO = 2 / 3;
+const COVER_HEIGHT = COVER_WIDTH / COVER_ASPECT_RATIO;
 
 type Props = {
   /** URLs déjà résolues (voir `BookRepository.coverUrl`) — purement présentationnel, pas de coverId ici. */
@@ -36,19 +37,27 @@ export default function CoverCarousel({ coverUrls }: Props) {
 
   return (
     <View>
-      <FlatList
-        data={coverUrls}
-        keyExtractor={(uri, index) => `${uri}-${index}`}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        style={styles.list}
-        onScroll={onScroll}
-        scrollEventThrottle={32}
-        renderItem={({ item }) => (
-          <Image source={{ uri: item }} style={styles.cover} contentFit="cover" transition={150} />
-        )}
-      />
+      {/* `frame` a une taille fixe et `overflow: hidden` : la FlatList est posée en
+          position absolue dedans (`StyleSheet.absoluteFillObject`), donc elle ne
+          peut physiquement pas dépasser cette taille — même si son propre calcul de
+          hauteur de contenu se trompe (ce qui arrivait avant : un simple `height`
+          sur le style de la FlatList ne suffisait pas à empêcher un grand espace
+          vide de s'ouvrir entre la couverture et les points). */}
+      <View style={styles.frame}>
+        <FlatList
+          data={coverUrls}
+          keyExtractor={(uri, index) => `${uri}-${index}`}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.list}
+          onScroll={onScroll}
+          scrollEventThrottle={32}
+          renderItem={({ item }) => (
+            <Image source={{ uri: item }} style={styles.cover} contentFit="cover" transition={150} />
+          )}
+        />
+      </View>
       <View style={styles.dots}>
         {coverUrls.map((uri, index) => (
           <View key={uri} style={[styles.dot, index === activeIndex && styles.dotActive]} />
@@ -59,13 +68,19 @@ export default function CoverCarousel({ coverUrls }: Props) {
 }
 
 const styles = StyleSheet.create({
-  list: {
+  frame: {
     width: COVER_WIDTH,
+    height: COVER_HEIGHT,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+  },
+  list: {
+    ...StyleSheet.absoluteFillObject,
   },
   cover: {
     width: COVER_WIDTH,
+    height: COVER_HEIGHT,
     aspectRatio: COVER_ASPECT_RATIO,
-    borderRadius: radius.lg,
   },
   dots: {
     flexDirection: 'row',

@@ -1,5 +1,7 @@
+import { FirebaseAuthRepository } from '../data/firebase/FirebaseAuthRepository';
 import { AsyncStorageLibraryRepository } from '../data/local/AsyncStorageLibraryRepository';
 import { OpenLibraryBookRepository } from '../data/openLibrary/OpenLibraryBookRepository';
+import type { AuthRepository } from '../domain/repositories/AuthRepository';
 import type { BookRepository } from '../domain/repositories/BookRepository';
 import type { LibraryRepository } from '../domain/repositories/LibraryRepository';
 
@@ -8,3 +10,4 @@ import type { LibraryRepository } from '../domain/repositories/LibraryRepository
 // so swapping Open Library or AsyncStorage for something else touches only this file.
 export const bookRepository: BookRepository = new OpenLibraryBookRepository();
 export const libraryRepository: LibraryRepository = new AsyncStorageLibraryRepository();
+export const authRepository: AuthRepository = new FirebaseAuthRepository();

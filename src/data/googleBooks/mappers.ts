@@ -13,6 +13,11 @@ import type { GoogleBooksVolume } from './types';
  * couverture : `Book.coverUrl` porte une URL déjà résolue, puisque le format
  * des images Google Books ne suit pas le schéma numérique `coverId` d'Open
  * Library (`covers.openlibrary.org/b/id/<id>-<size>.jpg`).
+ *
+ * On récupère aussi `description` : comme il n'y a pas de fiche "œuvre" Open
+ * Library à interroger pour ce livre, `BookDetailScreen` n'aurait jamais de
+ * résumé sinon (cas réel : *Les Thanatonautes*, absent de l'index Open
+ * Library mais avec une description Google Books). Voir `Book.description`.
  */
 export function googleVolumeToBook(isbn: string, volume: GoogleBooksVolume): Book | undefined {
   const info = volume.volumeInfo;
@@ -25,6 +30,7 @@ export function googleVolumeToBook(isbn: string, volume: GoogleBooksVolume): Boo
     title: info.title,
     authors: info.authors ?? [],
     coverUrl: googleCoverUrl(volume),
+    description: info.description,
     languages: info.language ? [info.language] : [],
   };
 }

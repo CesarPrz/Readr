@@ -33,3 +33,33 @@ export async function findByIsbnOnGoogleBooks(isbn: string): Promise<Book | unde
     return undefined;
   }
 }
+
+/**
+ * Repli utilisé par `OpenLibraryBookRepository.getDetail` quand la fiche
+ * "œuvre" Open Library existe (le livre est bien référencé, avec éditions et
+ * couvertures) mais n'a simplement pas de champ `description` renseigné — cas
+ * constaté en pratique sur *Les Thanatonautes* de Bernard Werber, pourtant
+ * loin d'être un livre obscur. Contrairement à `findByIsbnOnGoogleBooks`, on
+ * n'a pas d'ISBN à ce stade (juste le titre et les auteurs de la fiche
+ * "œuvre") : recherche par titre + premier auteur (`intitle:`/`inauthor:`),
+ * meilleure correspondance seulement — pas de garantie que le résultat soit
+ * exactement la même édition. Même repli silencieux sans clé API configurée.
+ */
+export async function findDescriptionOnGoogleBooks(title: string, authors: string[]): Promise<string | undefined> {
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
+  if (!apiKey || !title) return undefined;
+
+  try {
+    const terms = [`intitle:${encodeURIComponent(title)}`];
+    if (authors[0]) terms.push(`inauthor:${encodeURIComponent(authors[0])}`);
+    const url = `${GOOGLE_BOOKS_URL}?q=${terms.join('+')}&maxResults=1&key=${apiKey}`;
+
+    const res = await fetch(url);
+    if (!res.ok) return undefined;
+
+    const data: GoogleBooksResponse = await res.json();
+    return data.items?.[0]?.volumeInfo?.description;
+  } catch {
+    return undefined;
+  }
+}

@@ -2,7 +2,7 @@ import type { Book } from '../../domain/entities/Book';
 import type { BookDetail } from '../../domain/entities/BookDetail';
 import type { BookRepository, SearchBooksResult } from '../../domain/repositories/BookRepository';
 import { findByIsbnOnBnf } from '../bnf/bnfClient';
-import { findByIsbnOnGoogleBooks } from '../googleBooks/googleBooksClient';
+import { findByIsbnOnGoogleBooks, findDescriptionOnGoogleBooks } from '../googleBooks/googleBooksClient';
 import { catalogEntryToBook, docsToBooks, toBookDetail } from './mappers';
 import type { EditionsResponse, RawEdition, RawIsbnEdition, SearchResponse, WorkDetail } from './types';
 
@@ -57,7 +57,19 @@ export class OpenLibraryBookRepository implements BookRepository {
     const results = await Promise.all(workIds.map((id) => this.fetchWorkAndEditions(id)));
     const details = results.map((r) => r.detail).filter((d): d is WorkDetail => d !== null);
     const editionsPerWork = results.map((r) => r.editions);
-    return toBookDetail(workIds[0], details, editionsPerWork);
+    const detail = toBookDetail(workIds[0], details, editionsPerWork);
+    if (detail.description) return detail;
+
+    // Open Library référence bien l'œuvre (éditions, couvertures...) mais
+    // n'a simplement pas de résumé pour elle — pas rare, y compris pour des
+    // livres très connus (ex. Les Thanatonautes de Bernard Werber). On tente
+    // Google Books par titre + auteur en dernier recours, faute d'ISBN à ce
+    // stade (voir `findDescriptionOnGoogleBooks`).
+    const primary = details[0];
+    if (!primary) return detail;
+    const authors = await this.fetchAuthorNames(primary.authors ?? []);
+    const description = await findDescriptionOnGoogleBooks(primary.title, authors);
+    return description ? { ...detail, description } : detail;
   }
 
   coverUrl(coverId?: number, size: 'S' | 'M' | 'L' = 'M'): string | undefined {

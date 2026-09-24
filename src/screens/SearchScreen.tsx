@@ -85,6 +85,7 @@ export default function SearchScreen({ navigation }: Props) {
         presetAuthors: book.authors,
         presetCoverId: book.coverId,
         presetCoverUrl: book.coverUrl,
+        presetDescription: book.description,
         presetLanguages: book.languages,
       });
     },

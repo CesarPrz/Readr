@@ -88,7 +88,12 @@ function editionFormatLabel(edition: RawEdition): string {
 }
 
 function rawEditionToEdition(edition: RawEdition): Edition {
-  return { id: edition.key, formatLabel: editionFormatLabel(edition), coverId: edition.covers?.[0] };
+  return {
+    id: edition.key,
+    formatLabel: editionFormatLabel(edition),
+    publisher: edition.publishers?.[0]?.trim() || undefined,
+    coverId: edition.covers?.[0],
+  };
 }
 
 function workDescriptionText(detail: WorkDetail): string | undefined {
@@ -145,5 +150,6 @@ export function toBookDetail(primaryId: string, details: WorkDetail[], rawEditio
     editions: allRawEditions.map(rawEditionToEdition),
     hasAudioEdition: allRawEditions.some((e) => (e.physical_format ?? '').toLowerCase().includes('audio')),
     languages: dedupe(allRawEditions.flatMap((e) => (e.languages ?? []).map(languageCode))),
+    subjects: dedupe(details.flatMap((d) => d.subjects ?? [])),
   };
 }

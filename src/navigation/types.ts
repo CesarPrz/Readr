@@ -10,6 +10,7 @@ export type BookDetailParams = {
   presetAuthors: string[];
   presetCoverId?: number;
   presetCoverUrl?: string; // voir Book.coverUrl — livres venus d'une source sans coverId Open Library (ex. Google Books)
+  presetDescription?: string; // voir Book.description — résumé déjà connu, pour les livres sans fiche "œuvre" Open Library
   presetLanguages: string[];
 };
 

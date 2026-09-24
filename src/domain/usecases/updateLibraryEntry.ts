@@ -1,7 +1,7 @@
 import type { LibraryEntry } from '../entities/LibraryEntry';
 import type { LibraryRepository } from '../repositories/LibraryRepository';
 
-export type LibraryEntryPatch = Partial<Pick<LibraryEntry, 'status' | 'rating' | 'note'>>;
+export type LibraryEntryPatch = Partial<Pick<LibraryEntry, 'status' | 'liked' | 'rating' | 'note'>>;
 
 export async function updateLibraryEntry(
   repo: LibraryRepository,

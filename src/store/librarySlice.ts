@@ -19,9 +19,9 @@ export const fetchLibrary = createAsyncThunk('library/fetch', () => loadLibrary(
 
 export const addBook = createAsyncThunk(
   'library/add',
-  ({ book, status }: { book: Book; status?: ReadingStatus }, { getState }) => {
+  ({ book, status, liked }: { book: Book; status?: ReadingStatus; liked?: boolean }, { getState }) => {
     const { entries } = (getState() as RootState).library;
-    return addBookToLibrary(libraryRepository, entries, book, status);
+    return addBookToLibrary(libraryRepository, entries, book, status, liked);
   },
 );
 

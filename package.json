@@ -7,7 +7,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "env:dev": "node scripts/use-env.js dev",
+    "env:prod": "node scripts/use-env.js prod",
+    "start:dev": "node scripts/use-env.js dev && expo start -c",
+    "start:prod": "node scripts/use-env.js prod && expo start -c"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -20,6 +24,7 @@
     "expo-camera": "~57.0.5",
     "expo-image": "~57.0.5",
     "expo-status-bar": "~57.0.1",
+    "firebase": "^12.0.0",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",

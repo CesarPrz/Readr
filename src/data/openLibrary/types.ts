@@ -23,6 +23,7 @@ export type WorkDetail = {
   description?: WorkDescription;
   covers?: number[];
   authors?: { author: { key: string } }[];
+  subjects?: string[]; // liste libre côté Open Library (genres, thèmes, prix littéraires... mélangés)
 };
 
 /**

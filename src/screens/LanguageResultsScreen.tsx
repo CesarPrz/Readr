@@ -45,6 +45,7 @@ export default function LanguageResultsScreen({ route, navigation }: Props) {
         presetAuthors: book.authors,
         presetCoverId: book.coverId,
         presetCoverUrl: book.coverUrl,
+        presetDescription: book.description,
         presetLanguages: book.languages,
       });
     },

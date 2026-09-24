@@ -8,6 +8,7 @@ export type GoogleBooksVolumeInfo = {
   title?: string;
   authors?: string[];
   language?: string; // single ISO code (e.g. "fr"), unlike Open Library's per-edition list
+  description?: string;
   imageLinks?: GoogleBooksImageLinks;
 };
 

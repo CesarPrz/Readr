@@ -11,21 +11,31 @@ import { colors, radius, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<LibraryStackParamList, 'LibraryHome'>;
 
-const TABS: { value: ReadingStatus; label: string }[] = [
+// "Aimé" n'est pas un statut de lecture (voir LibraryEntry.liked) — indépendant,
+// un livre "à lire" peut très bien être aimé — donc un onglet à part plutôt
+// qu'une valeur de plus dans ReadingStatus.
+type TabValue = ReadingStatus | 'liked';
+
+const TABS: { value: TabValue; label: string }[] = [
   { value: 'to_read', label: 'À lire' },
   { value: 'reading', label: 'En cours' },
   { value: 'read', label: 'Lu' },
+  { value: 'liked', label: 'Aimé' },
 ];
 
 type SortMode = 'date' | 'rating';
 
+function matchesTab(entry: { status: ReadingStatus; liked?: boolean }, tab: TabValue): boolean {
+  return tab === 'liked' ? !!entry.liked : entry.status === tab;
+}
+
 export default function LibraryScreen({ navigation }: Props) {
   const entries = useAppSelector((state) => state.library.entries);
-  const [activeTab, setActiveTab] = useState<ReadingStatus>('to_read');
+  const [activeTab, setActiveTab] = useState<TabValue>('to_read');
   const [sortMode, setSortMode] = useState<SortMode>('date');
 
   const filtered = useMemo(() => {
-    const inTab = entries.filter((e) => e.status === activeTab);
+    const inTab = entries.filter((e) => matchesTab(e, activeTab));
     return [...inTab].sort((a, b) => {
       if (sortMode === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
       return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
@@ -36,7 +46,7 @@ export default function LibraryScreen({ navigation }: Props) {
     <View style={styles.container}>
       <View style={styles.tabsRow}>
         {TABS.map((tab) => {
-          const count = entries.filter((e) => e.status === tab.value).length;
+          const count = entries.filter((e) => matchesTab(e, tab.value)).length;
           const active = tab.value === activeTab;
           return (
             <Pressable
@@ -77,6 +87,7 @@ export default function LibraryScreen({ navigation }: Props) {
                 presetAuthors: item.authors,
                 presetCoverId: item.coverId,
                 presetCoverUrl: item.coverUrl,
+                presetDescription: item.description,
                 presetLanguages: item.languages,
               })
             }

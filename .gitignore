@@ -8,6 +8,8 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 .env
+.env.dev
+.env.prod
 .env*.local
 android/
 ios/

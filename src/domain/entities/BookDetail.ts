@@ -7,4 +7,9 @@ export type BookDetail = {
   editions: Edition[];
   hasAudioEdition: boolean;
   languages: string[]; // derived from the fetched editions across every merged work key
+  // Sujets Open Library, tels quels (liste libre : genres, thèmes, prix
+  // littéraires... mélangés, pas une taxonomie de genres propre). Utilisé par
+  // `getRecommendations` pour la recommandation "D'autres classiques du genre
+  // X" — pas affiché tel quel ailleurs dans l'app.
+  subjects: string[];
 };

@@ -53,6 +53,7 @@ export default function ScanScreen({ navigation }: Props) {
       presetAuthors: result.authors,
       presetCoverId: result.coverId,
       presetCoverUrl: result.coverUrl,
+      presetDescription: result.description,
       presetLanguages: result.languages,
     });
     dispatch(resetScan());
