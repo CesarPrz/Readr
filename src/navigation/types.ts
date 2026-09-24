@@ -9,11 +9,19 @@ export type BookDetailParams = {
   presetTitle: string;
   presetAuthors: string[];
   presetCoverId?: number;
+  presetCoverUrl?: string; // voir Book.coverUrl — livres venus d'une source sans coverId Open Library (ex. Google Books)
   presetLanguages: string[];
+};
+
+/** Ouvert depuis l'en-tête cliquable d'un regroupement par langue des résultats de recherche. */
+export type LanguageResultsParams = {
+  query: string; // la recherche d'origine, réutilisée avec le filtre `language:<code>` en plus
+  language: string; // code langue Open Library, ex. "fre"
 };
 
 export type SearchStackParamList = {
   SearchHome: undefined;
+  LanguageResults: LanguageResultsParams;
   BookDetail: BookDetailParams;
 };
 

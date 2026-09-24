@@ -52,6 +52,7 @@ export default function ScanScreen({ navigation }: Props) {
       presetTitle: result.title,
       presetAuthors: result.authors,
       presetCoverId: result.coverId,
+      presetCoverUrl: result.coverUrl,
       presetLanguages: result.languages,
     });
     dispatch(resetScan());
@@ -83,7 +84,7 @@ export default function ScanScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <CameraView
-        style={StyleSheet.absoluteFill}
+        style={StyleSheet.absoluteFillObject}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ['ean13'] }}
         onBarcodeScanned={status === 'idle' ? handleBarcodeScanned : undefined}
@@ -127,9 +128,9 @@ export default function ScanScreen({ navigation }: Props) {
         <View style={styles.resultCard}>
           <View style={styles.resultRow}>
             <View style={styles.resultCoverWrap}>
-              {bookRepository.coverUrl(result.coverId, 'M') ? (
+              {result.coverUrl ?? bookRepository.coverUrl(result.coverId, 'M') ? (
                 <Image
-                  source={{ uri: bookRepository.coverUrl(result.coverId, 'M') }}
+                  source={{ uri: result.coverUrl ?? bookRepository.coverUrl(result.coverId, 'M') }}
                   style={styles.resultCover}
                   contentFit="cover"
                 />
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   frameOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },

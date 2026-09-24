@@ -17,16 +17,18 @@ store/, screens/, components/  (consomment le domain via composition)
 ```
 
 - `src/domain/` — cœur métier. Aucun import de React, React Native, Redux, Open Library ou AsyncStorage.
-  - `entities/` — types métier purs : `Book`, `Edition`, `BookDetail`, `LibraryEntry`.
+  - `entities/` — types métier purs : `Book`, `Edition` (dont `coverId?`, une édition peut avoir sa propre couverture), `BookDetail`, `LibraryEntry`. `Book` et `LibraryEntry` portent deux champs de couverture : `coverId?: number` (schéma Open Library, résolu via `bookRepository.coverUrl(id, taille)`) et `coverUrl?: string` (URL déjà résolue, pour les sources sans identifiant Open Library, ex. `data/googleBooks/`). Partout où une couverture est affichée : `book.coverUrl ?? bookRepository.coverUrl(book.coverId, taille)`.
   - `repositories/` — interfaces (ports) : `BookRepository`, `LibraryRepository`. Elles décrivent un contrat, jamais une implémentation.
-  - `usecases/` — une fonction par action métier (`searchBooks`, `findBookByIsbn`, `addBookToLibrary`, `updateLibraryEntry`, `getRecommendations`...). Prennent un repository en premier paramètre (injection par argument, pas de DI framework).
+  - `usecases/` — une fonction par action métier (`searchBooks`, `searchBooksInLanguage`, `findBookByIsbn`, `addBookToLibrary`, `updateLibraryEntry`, `getRecommendations`...). Prennent un repository en premier paramètre (injection par argument, pas de DI framework).
 - `src/data/` — implémentations concrètes des interfaces du domain.
   - `openLibrary/` — `OpenLibraryBookRepository` (appels HTTP, dont `findByIsbn` pour le scanner) + `mappers.ts` (JSON brut → entités du domain, avec le regroupement des doublons) + `types.ts` (formats bruts de l'API, jamais exposés hors de ce dossier).
-  - `googleBooks/` — dernier repli de `findByIsbn`, appelé en interne par `OpenLibraryBookRepository` quand Open Library (index + catalogue) ne trouve rien pour un ISBN. Pas un `BookRepository` à part entière (pas de `search`/`getDetail`) : juste `googleBooksClient.ts` + `mappers.ts` + `types.ts`, même séparation raw-types/mapping que les autres sources.
+  - `googleBooks/` — repli de `findByIsbn` (API Google Books), appelé en interne par `OpenLibraryBookRepository` quand Open Library (index + catalogue) ne trouve rien pour un ISBN, avant la BnF. Nécessite une clé API (`EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY`, voir `.env.example`) ; sans clé, sauté silencieusement. Seule source de repli à fournir une vraie couverture (`Book.coverUrl`). Pas un `BookRepository` à part entière : `googleBooksClient.ts` + `mappers.ts` + `types.ts`, même séparation raw-types/mapping que les autres sources.
+  - `bnf/` — tout dernier repli de `findByIsbn` (API SRU de la Bibliothèque nationale de France), appelé en interne par `OpenLibraryBookRepository` quand ni Open Library (index + catalogue) ni Google Books ne trouvent rien pour un ISBN. Pas un `BookRepository` à part entière (pas de `search`/`getDetail`) : juste `bnfClient.ts` + `xml.ts` (extraction du XML Dublin Core par regex, pas de JSON côté BnF) + `mappers.ts` + `types.ts`, même séparation raw-types/mapping que les autres sources. N'expose pas de couverture.
   - `local/` — `AsyncStorageLibraryRepository`.
 - `src/composition/repositories.ts` — **seul fichier autorisé à importer une classe concrète de `data/`**. Instancie `bookRepository` et `libraryRepository`, exportés typés en interfaces du domain.
-- `src/store/` — Redux Toolkit. Un slice par domaine fonctionnel (`librarySlice`, `searchSlice`, `bookDetailSlice`, `discoverSlice`, `scanSlice`). Les thunks appellent des usecases avec les repositories importés depuis `composition/`, jamais depuis `data/` directement.
+- `src/store/` — Redux Toolkit. Un slice par domaine fonctionnel (`librarySlice`, `searchSlice`, `languageResultsSlice`, `bookDetailSlice`, `discoverSlice`, `scanSlice`). Les thunks appellent des usecases avec les repositories importés depuis `composition/`, jamais depuis `data/` directement.
 - `src/screens/`, `src/components/`, `src/navigation/`, `src/theme/` — présentation. Consomment le store via `useAppDispatch`/`useAppSelector` (`src/store/hooks.ts`). Quatre onglets : Recherche, Scanner, Découvrir, Ma bibliothèque.
+- `src/utils/` — helpers de présentation partagés entre écrans (ex. `languageLabels.ts`), sans dépendance à Redux/API. Différent de `domain/` : ce ne sont pas des règles métier, juste du formatage d'affichage réutilisé à plusieurs endroits.
 
 ## Règles à respecter
 
@@ -34,7 +36,7 @@ store/, screens/, components/  (consomment le domain via composition)
 2. **Un écran ne fait jamais d'appel réseau ni d'accès AsyncStorage.** Il dispatch une action, un thunk appelle un usecase, le usecase appelle le repository.
 3. **Les composants de `components/` restent purement présentationnels.** Ils reçoivent des props déjà résolues (ex. `coverUrl: string`, pas `coverId: number` + un appel à `bookRepository` dans le composant). C'est à l'écran (qui dépend déjà de `composition/`) de résoudre l'URL avant de la passer.
 4. **Nouvelle fonctionnalité = un usecase avant un thunk.** Si une action métier n'a pas de fonction dans `domain/usecases/`, elle ne va pas directement dans un thunk Redux.
-5. **Nouvelle source de données = un nouveau dossier dans `data/` (types + mapping + client), jamais un changement d'interface `domain/`** sauf si le besoin métier change réellement. Exemple réel : `data/googleBooks/` est un repli ciblé de `findByIsbn` (pas un `BookRepository` complet), utilisé en interne par `OpenLibraryBookRepository` — jamais un appel `fetch` planqué dans un composant ou un thunk.
+5. **Nouvelle source de données = un nouveau dossier dans `data/` (types + mapping + client), jamais un changement d'interface `domain/`** sauf si le besoin métier change réellement. Exemples réels : `data/googleBooks/` et `data/bnf/` sont des replis ciblés de `findByIsbn` (pas des `BookRepository` complets), utilisés en interne par `OpenLibraryBookRepository` — jamais un appel `fetch` planqué dans un composant ou un thunk.
 6. **Les types bruts d'une API externe (`OpenLibraryDoc`, `RawEdition`...) ne sortent jamais de `data/<source>/types.ts`.** Le mapping vers les entités du domain se fait dans `data/<source>/mappers.ts`.
 7. **Un thunk Redux ne fait que : appeler un usecase, retourner son résultat.** La logique (dédoublonnage, fusion, validation) vit dans le usecase, pas dans le thunk ni dans le reducer.
 
@@ -69,7 +71,9 @@ store/, screens/, components/  (consomment le domain via composition)
 
 ## Dossiers obsolètes
 
-`src/api/` et `src/storage/` sont l'ancienne implémentation (avant le passage à Clean Architecture + Redux). Leurs fichiers ont été vidés et commentés ; rien ne les importe. Ils peuvent être supprimés du disque — Claude ne peut pas le faire à distance sur cet environnement, donc ça reste une suppression manuelle.
+`src/api/` et `src/storage/` sont l'ancienne implémentation (avant le passage à Clean Architecture + Redux). Leurs fichiers sont vidés et commentés ; rien ne les importe. Ils peuvent être supprimés du disque — Claude ne peut pas le faire à distance sur cet environnement, donc ça reste une suppression manuelle.
+
+`src/data/googleBooks/` a été un temps désactivé (quota anonyme Google Books trop bas, remplacé par `src/data/bnf/`), puis réactivé avec une vraie clé API — il n'est **plus** obsolète, voir la section Architecture ci-dessus.
 
 ## Avant de proposer un changement de structure
 

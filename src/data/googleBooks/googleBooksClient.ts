@@ -5,25 +5,29 @@ import type { GoogleBooksResponse } from './types';
 const GOOGLE_BOOKS_URL = 'https://www.googleapis.com/books/v1/volumes';
 
 /**
- * Dernier recours de `findByIsbn` (voir `OpenLibraryBookRepository`), utilisé
- * uniquement quand l'ISBN scanné est absent d'Open Library en entier. Le
- * catalogue d'Open Library est orienté fonds de bibliothèques et couvre mal
- * certaines éditions commerciales grand public (poche français, entre
- * autres) ; Google Books, orienté vente, les couvre beaucoup mieux.
+ * Repli de `findByIsbn` (voir `OpenLibraryBookRepository`), utilisé quand
+ * l'ISBN scanné n'est pas dans l'index de recherche Open Library ni dans son
+ * catalogue brut. Nécessite une clé API : `EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY`
+ * (voir `.env.example` et le README pour la configurer) — sans clé, l'API
+ * Google Books rejette même les recherches en lecture seule (quota anonyme
+ * quasi inexistant, 429 systématique constaté en test).
  *
- * Pas de clé API nécessaire pour une simple recherche par ISBN, mais le quota
- * anonyme est limité (429 possible en cas d'usage intensif) — d'où son rôle
- * de dernier repli, jamais de source principale. Un échec ici (réseau, quota,
- * réponse inattendue) ne doit jamais faire planter le scan : on renvoie
- * `undefined`, l'écran affiche alors « aucun livre trouvé ».
+ * Si la clé n'est pas configurée, ce repli est silencieusement sauté (pas
+ * d'erreur bruyante) — `findByIsbn` continue avec le repli BnF.
  */
 export async function findByIsbnOnGoogleBooks(isbn: string): Promise<Book | undefined> {
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
+  if (!apiKey) return undefined;
+
   try {
-    const res = await fetch(`${GOOGLE_BOOKS_URL}?q=isbn:${isbn}`);
+    const url = `${GOOGLE_BOOKS_URL}?q=isbn:${isbn}&key=${apiKey}`;
+    const res = await fetch(url);
     if (!res.ok) return undefined;
+
     const data: GoogleBooksResponse = await res.json();
     const volume = data.items?.[0];
     if (!volume) return undefined;
+
     return googleVolumeToBook(isbn, volume);
   } catch {
     return undefined;

@@ -7,6 +7,7 @@ export type LibraryEntry = {
   title: string;
   authors: string[];
   coverId?: number;
+  coverUrl?: string; // voir Book.coverUrl — couverture déjà résolue, pour les livres venus d'une source sans coverId Open Library
   languages: string[];
   status: ReadingStatus;
   rating?: number; // 1–5, optional

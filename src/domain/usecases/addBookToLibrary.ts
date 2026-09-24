@@ -17,6 +17,7 @@ export async function addBookToLibrary(
     title: book.title,
     authors: book.authors,
     coverId: book.coverId,
+    coverUrl: book.coverUrl,
     languages: book.languages,
     status,
     addedAt: new Date().toISOString(),

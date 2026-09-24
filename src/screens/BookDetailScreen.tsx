@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import CoverCarousel from '../components/CoverCarousel';
 import FormatBadge from '../components/FormatBadge';
 import RatingStars from '../components/RatingStars';
 import StatusSegmented from '../components/StatusSegmented';
@@ -17,39 +17,16 @@ import { fetchBookDetail } from '../store/bookDetailSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addBook, patchLibraryEntry, removeBook } from '../store/librarySlice';
 import { colors, radius, spacing, typography } from '../theme/theme';
+import { languageLabel } from '../utils/languageLabels';
 
 type Props = NativeStackScreenProps<
   SearchStackParamList | DiscoverStackParamList | ScanStackParamList | LibraryStackParamList,
   'BookDetail'
 >;
 
-// Display-only labels for Open Library's language codes — purely a formatting
-// concern for this screen, not a domain rule. Falls back to the raw code.
-const LANGUAGE_LABELS: Record<string, string> = {
-  eng: 'Anglais',
-  fre: 'Français',
-  fra: 'Français',
-  spa: 'Espagnol',
-  ger: 'Allemand',
-  deu: 'Allemand',
-  ita: 'Italien',
-  por: 'Portugais',
-  dut: 'Néerlandais',
-  nld: 'Néerlandais',
-  jpn: 'Japonais',
-  chi: 'Chinois',
-  zho: 'Chinois',
-  rus: 'Russe',
-  ara: 'Arabe',
-  kor: 'Coréen',
-};
-
-function languageLabel(code: string): string {
-  return LANGUAGE_LABELS[code] ?? code.toUpperCase();
-}
-
 export default function BookDetailScreen({ route }: Props) {
-  const { workKey, presetWorkKeys, presetTitle, presetAuthors, presetCoverId, presetLanguages } = route.params;
+  const { workKey, presetWorkKeys, presetTitle, presetAuthors, presetCoverId, presetCoverUrl, presetLanguages } =
+    route.params;
   const dispatch = useAppDispatch();
   const entry = useAppSelector((state) => state.library.entries.find((e) => e.id === workKey));
   const { detail, status: detailStatus, currentId } = useAppSelector((state) => state.bookDetail);
@@ -67,7 +44,6 @@ export default function BookDetailScreen({ route }: Props) {
     setNoteDraft(entry?.note ?? '');
   }, [entry?.note]);
 
-  const uri = bookRepository.coverUrl(presetCoverId, 'L');
   const audioAvailable = isCurrent && !!detail?.hasAudioEdition;
   const editions = isCurrent ? (detail?.editions ?? []) : [];
   const description = isCurrent ? detail?.description : undefined;
@@ -75,11 +51,29 @@ export default function BookDetailScreen({ route }: Props) {
   // until then, fall back to what search already told us about this book.
   const languages = isCurrent && detail?.languages.length ? detail.languages : presetLanguages;
 
+  // Plusieurs éditions fusionnées peuvent chacune référencer une couverture
+  // différente — on les propose toutes plutôt que d'en imposer une seule
+  // (voir CoverCarousel). presetCoverId en premier : dispo dès l'ouverture de
+  // l'écran, avant même que la fiche détail (et ses éditions) ait chargé.
+  const coverIds = useMemo(() => {
+    const ids = [presetCoverId, ...editions.map((edition) => edition.coverId)];
+    return Array.from(new Set(ids.filter((id): id is number => id !== undefined)));
+  }, [presetCoverId, editions]);
+
+  // presetCoverUrl est une URL déjà résolue (livres venus d'une source sans
+  // coverId Open Library, ex. Google Books) — elle est placée en premier
+  // puisqu'elle est dispo immédiatement, avant même les éditions détaillées.
+  const coverUrls = useMemo(() => {
+    const fromIds = coverIds.map((id) => bookRepository.coverUrl(id, 'L')).filter((url): url is string => !!url);
+    const all = presetCoverUrl ? [presetCoverUrl, ...fromIds] : fromIds;
+    return Array.from(new Set(all));
+  }, [presetCoverUrl, coverIds]);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.coverRow}>
-        {uri ? (
-          <Image source={{ uri }} style={styles.cover} contentFit="cover" transition={150} />
+        {coverUrls.length > 0 ? (
+          <CoverCarousel coverUrls={coverUrls} />
         ) : (
           <View style={[styles.cover, styles.coverPlaceholder]}>
             <Text style={styles.title} numberOfLines={4}>
@@ -116,6 +110,7 @@ export default function BookDetailScreen({ route }: Props) {
                   title: presetTitle,
                   authors: presetAuthors,
                   coverId: presetCoverId,
+                  coverUrl: presetCoverUrl,
                   languages: presetLanguages,
                 },
               }),

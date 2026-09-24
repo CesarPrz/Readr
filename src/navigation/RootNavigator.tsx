@@ -4,10 +4,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '../theme/theme';
 import SearchScreen from '../screens/SearchScreen';
+import LanguageResultsScreen from '../screens/LanguageResultsScreen';
 import ScanScreen from '../screens/ScanScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
+import { languageLabel } from '../utils/languageLabels';
 import type {
   DiscoverStackParamList,
   LibraryStackParamList,
@@ -33,6 +35,11 @@ function SearchStackNavigator() {
   return (
     <SearchStack.Navigator screenOptions={stackScreenOptions}>
       <SearchStack.Screen name="SearchHome" component={SearchScreen} options={{ title: 'Recherche' }} />
+      <SearchStack.Screen
+        name="LanguageResults"
+        component={LanguageResultsScreen}
+        options={({ route }) => ({ title: languageLabel(route.params.language) })}
+      />
       <SearchStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
     </SearchStack.Navigator>
   );

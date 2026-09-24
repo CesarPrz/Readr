@@ -8,11 +8,13 @@ type Props = {
   authors: string[];
   coverUrl?: string;
   onPress: () => void;
+  /** '48%' (grille deux colonnes) par défaut ; une largeur fixe en pixels pour une row horizontale. */
+  width?: number | `${number}%`;
 };
 
-export default function BookCard({ title, authors, coverUrl, onPress }: Props) {
+export default function BookCard({ title, authors, coverUrl, onPress, width = '48%' }: Props) {
   return (
-    <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
+    <Pressable style={({ pressed }) => [styles.card, { width }, pressed && styles.pressed]} onPress={onPress}>
       <View style={styles.coverWrap}>
         {coverUrl ? (
           <Image source={{ uri: coverUrl }} style={styles.cover} contentFit="cover" transition={150} />
@@ -36,7 +38,6 @@ export default function BookCard({ title, authors, coverUrl, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    width: '48%',
     marginBottom: spacing.lg,
   },
   pressed: {

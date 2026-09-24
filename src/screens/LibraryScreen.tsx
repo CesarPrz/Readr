@@ -68,7 +68,7 @@ export default function LibraryScreen({ navigation }: Props) {
           <BookCard
             title={item.title}
             authors={item.authors}
-            coverUrl={bookRepository.coverUrl(item.coverId, 'M')}
+            coverUrl={item.coverUrl ?? bookRepository.coverUrl(item.coverId, 'M')}
             onPress={() =>
               navigation.navigate('BookDetail', {
                 workKey: item.id,
@@ -76,6 +76,7 @@ export default function LibraryScreen({ navigation }: Props) {
                 presetTitle: item.title,
                 presetAuthors: item.authors,
                 presetCoverId: item.coverId,
+                presetCoverUrl: item.coverUrl,
                 presetLanguages: item.languages,
               })
             }

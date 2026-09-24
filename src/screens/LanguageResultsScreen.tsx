@@ -4,23 +4,37 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import BookCard from '../components/BookCard';
 import { bookRepository } from '../composition/repositories';
 import type { Book } from '../domain/entities/Book';
-import type { DiscoverStackParamList } from '../navigation/types';
-import { fetchRecommendations } from '../store/discoverSlice';
+import type { SearchStackParamList } from '../navigation/types';
+import { runLanguageSearch } from '../store/languageResultsSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, spacing, typography } from '../theme/theme';
 
-type Props = NativeStackScreenProps<DiscoverStackParamList, 'DiscoverHome'>;
+type Props = NativeStackScreenProps<SearchStackParamList, 'LanguageResults'>;
 
-export default function DiscoverScreen({ navigation }: Props) {
+/**
+ * Liste complète (paginée, comme la recherche principale) des livres d'une
+ * langue donnée, ouverte depuis l'en-tête cliquable d'une row de
+ * `SearchScreen`. Relance la même recherche que l'écran d'origine, filtrée
+ * par langue côté serveur (`searchBooksInLanguage`) — pas limitée aux livres
+ * déjà chargés dans la row.
+ */
+export default function LanguageResultsScreen({ route, navigation }: Props) {
+  const { query, language } = route.params;
   const dispatch = useAppDispatch();
-  const { recommendations, status } = useAppSelector((state) => state.discover);
-  const libraryCount = useAppSelector((state) => state.library.entries.length);
+  const { results, page, rawFetched, numFound, status, query: currentQuery, language: currentLanguage } =
+    useAppSelector((state) => state.languageResults);
+
+  const isCurrent = currentQuery === query && currentLanguage === language;
 
   useEffect(() => {
-    // Recomputed whenever the library's size changes, so a book you just
-    // added or removed immediately influences what's suggested next.
-    dispatch(fetchRecommendations());
-  }, [dispatch, libraryCount]);
+    dispatch(runLanguageSearch({ query, language, page: 1 }));
+  }, [query, language, dispatch]);
+
+  const loadMore = useCallback(() => {
+    if (!isCurrent || status !== 'idle') return;
+    if (rawFetched >= numFound) return;
+    dispatch(runLanguageSearch({ query, language, page: page + 1 }));
+  }, [isCurrent, status, rawFetched, numFound, query, language, page, dispatch]);
 
   const openBook = useCallback(
     (book: Book) => {
@@ -37,27 +51,25 @@ export default function DiscoverScreen({ navigation }: Props) {
     [navigation],
   );
 
+  const loading = !isCurrent || status === 'loading';
+
   return (
     <View style={styles.container}>
-      <Text style={styles.hero}>Découvrir</Text>
-      <Text style={styles.subtitle}>Basé sur les livres lus et ajoutés à ta bibliothèque</Text>
+      {status === 'error' && isCurrent && (
+        <Text style={styles.message}>La recherche a échoué. Vérifie ta connexion et réessaie.</Text>
+      )}
 
-      {status === 'loading' && recommendations.length === 0 ? (
+      {loading ? (
         <ActivityIndicator style={styles.loader} color={colors.accentOrange} />
       ) : (
         <FlatList
-          data={recommendations}
+          data={results}
           keyExtractor={(item) => item.id}
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <Text style={styles.message}>
-              {libraryCount === 0
-                ? 'Ajoute des livres à ta bibliothèque pour recevoir des recommandations.'
-                : "Pas de recommandation pour l'instant — réessaie plus tard."}
-            </Text>
-          }
+          onEndReachedThreshold={0.4}
+          onEndReached={loadMore}
           renderItem={({ item }) => (
             <BookCard
               title={item.title}
@@ -66,6 +78,7 @@ export default function DiscoverScreen({ navigation }: Props) {
               onPress={() => openBook(item)}
             />
           )}
+          ListFooterComponent={status === 'loadingMore' ? <ActivityIndicator color={colors.accentOrange} /> : null}
         />
       )}
     </View>
@@ -77,17 +90,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-  },
-  hero: {
-    ...typography.hero,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    ...typography.body,
-    marginBottom: spacing.lg,
   },
   list: {
+    paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
   },
   row: {

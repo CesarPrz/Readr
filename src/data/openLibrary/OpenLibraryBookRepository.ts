@@ -1,6 +1,7 @@
 import type { Book } from '../../domain/entities/Book';
 import type { BookDetail } from '../../domain/entities/BookDetail';
 import type { BookRepository, SearchBooksResult } from '../../domain/repositories/BookRepository';
+import { findByIsbnOnBnf } from '../bnf/bnfClient';
 import { findByIsbnOnGoogleBooks } from '../googleBooks/googleBooksClient';
 import { catalogEntryToBook, docsToBooks, toBookDetail } from './mappers';
 import type { EditionsResponse, RawEdition, RawIsbnEdition, SearchResponse, WorkDetail } from './types';
@@ -36,11 +37,20 @@ export class OpenLibraryBookRepository implements BookRepository {
     const fromCatalog = await this.findByIsbnInCatalog(isbn);
     if (fromCatalog) return fromCatalog;
 
-    // Dernier recours : le livre n'existe carrément pas chez Open Library (ni
-    // index, ni catalogue). Open Library reste orienté fonds de bibliothèques
-    // et couvre mal certaines éditions commerciales grand public — Google
-    // Books les couvre mieux. Voir data/googleBooks/googleBooksClient.ts.
-    return findByIsbnOnGoogleBooks(isbn);
+    // Le livre n'existe pas chez Open Library (ni index, ni catalogue) : on
+    // interroge Google Books, qui a une bonne couverture internationale et
+    // renvoie une couverture (Book.coverUrl) — ce qu'Open Library comme la
+    // BnF ne peuvent pas offrir ici. Nécessite une clé API configurée (voir
+    // googleBooksClient.ts) ; sinon ce repli est silencieusement sauté.
+    const fromGoogleBooks = await findByIsbnOnGoogleBooks(isbn);
+    if (fromGoogleBooks) return fromGoogleBooks;
+
+    // Dernier recours : ni Open Library ni Google Books n'ont ce livre — cas
+    // rencontré en pratique sur des éditions de poche françaises très
+    // pointues (ex. Dracula chez J'ai lu, absent des deux à l'époque où ce
+    // repli a été ajouté). La BnF n'expose pas de couverture, mais reste la
+    // meilleure couverture catalographique pour les livres publiés en France.
+    return findByIsbnOnBnf(isbn);
   }
 
   async getDetail(workIds: string[]): Promise<BookDetail> {

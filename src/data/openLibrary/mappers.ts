@@ -44,7 +44,7 @@ function normalize(value: string): string {
 function docsToBook(group: OpenLibraryDoc[]): Book {
   // The doc with the most known editions is taken as the most complete/authoritative record for title/author/year.
   const primary = [...group].sort((a, b) => (b.edition_count ?? 0) - (a.edition_count ?? 0))[0];
-  const coverId = group.find((d) => d.cover_i !== undefined)?.cover_i ?? primary.cover_i;
+  const coverId = pickCoverId(group);
   const years = group.map((d) => d.first_publish_year).filter((y): y is number => y !== undefined);
 
   return {
@@ -58,6 +58,27 @@ function docsToBook(group: OpenLibraryDoc[]): Book {
   };
 }
 
+/**
+ * Choisit la couverture de la fiche la plus récente du groupe plutôt que la
+ * première rencontrée dans l'ordre d'itération. Pour les classiques du
+ * domaine public en particulier, la fiche la plus ancienne d'un groupe
+ * fusionné correspond souvent à la toute première édition numérisée, avec
+ * une couverture qui ne ressemble à aucune édition courante.
+ *
+ * Heuristique faible, pas une vraie sélection par édition : `first_publish_year`
+ * reste un champ par fiche "œuvre" issue de l'index de recherche (potentiellement
+ * lui-même un agrégat de plusieurs éditions), pas l'année précise de l'édition
+ * dont vient `cover_i`. Un biais vers la fiche la plus récente du groupe reste
+ * cependant préférable à un choix arbitraire d'ordre d'itération, sans appel
+ * réseau supplémentaire.
+ */
+function pickCoverId(group: OpenLibraryDoc[]): number | undefined {
+  const withCover = group.filter((d) => d.cover_i !== undefined);
+  if (withCover.length === 0) return undefined;
+  const mostRecent = [...withCover].sort((a, b) => (b.first_publish_year ?? 0) - (a.first_publish_year ?? 0))[0];
+  return mostRecent.cover_i;
+}
+
 function dedupe<T>(values: T[]): T[] {
   return Array.from(new Set(values));
 }
@@ -67,7 +88,7 @@ function editionFormatLabel(edition: RawEdition): string {
 }
 
 function rawEditionToEdition(edition: RawEdition): Edition {
-  return { id: edition.key, formatLabel: editionFormatLabel(edition) };
+  return { id: edition.key, formatLabel: editionFormatLabel(edition), coverId: edition.covers?.[0] };
 }
 
 function workDescriptionText(detail: WorkDetail): string | undefined {
