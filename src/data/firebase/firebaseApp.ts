@@ -1,5 +1,6 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import { type Auth, getAuth, getReactNativePersistence, initializeAuth } from 'firebase/auth';
+import { type Firestore, getFirestore, initializeFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Config Firebase : jamais codée en dur, voir .env.example pour où récupérer
@@ -45,4 +46,21 @@ try {
   firebaseAuth = getAuth(firebaseApp);
 }
 
-export { firebaseAuth };
+// experimentalAutoDetectLongPolling : le transport de streaming par défaut de
+// Firestore (gRPC-Web/WebChannel) est peu fiable sur le fetch/XHR de React
+// Native — bascule automatiquement sur du long-polling seulement quand c'est
+// nécessaire (évite le coût fixe d'un `experimentalForceLongPolling`
+// systématique). Sans ça, certains réseaux/environnements RN retournent des
+// erreurs "Could not reach Cloud Firestore backend" pourtant intermittentes.
+// Même contrainte Fast Refresh que l'Auth ci-dessus : on retombe sur
+// getFirestore() si initializeFirestore() a déjà été appelé sur cette app.
+let firestoreDb: Firestore;
+try {
+  firestoreDb = initializeFirestore(firebaseApp, {
+    experimentalAutoDetectLongPolling: true,
+  });
+} catch {
+  firestoreDb = getFirestore(firebaseApp);
+}
+
+export { firebaseAuth, firestoreDb };

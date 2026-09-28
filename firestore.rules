@@ -1,0 +1,20 @@
+// Règles Firestore — Phase 2 du plan Firebase (doc Claude du projet,
+// "firebase-social-plan"). Ce fichier n'est PAS déployé automatiquement (pas
+// de Firebase CLI/`firebase.json` dans ce projet) : il sert de référence
+// versionnée, à coller manuellement dans Firebase Console → Firestore
+// Database → Règles, dans CHACUN des deux projets (dev et prod — voir
+// README, section "Environnements").
+//
+// Phase 2 = pas encore de fonctionnalité sociale : chaque utilisateur ne
+// peut lire/écrire que sa propre bibliothèque, personne d'autre. L'accès en
+// lecture pour des amis confirmés (Phase 4, "Amis") étendra ces règles plus
+// tard — ne pas anticiper cette ouverture maintenant.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/library/{bookId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
