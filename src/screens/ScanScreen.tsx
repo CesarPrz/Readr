@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   frameOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },
