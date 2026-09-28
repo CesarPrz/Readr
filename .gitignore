@@ -13,3 +13,9 @@ yarn-error.*
 .env*.local
 android/
 ios/
+google-services.json
+google-services.dev.json
+google-services.prod.json
+GoogleService-Info.plist
+GoogleService-Info.dev.plist
+GoogleService-Info.prod.plist

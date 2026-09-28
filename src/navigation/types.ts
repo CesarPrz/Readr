@@ -41,9 +41,15 @@ export type LibraryStackParamList = {
   BookDetail: BookDetailParams;
 };
 
+/** Écran unique (Phase 3 du plan Firebase) : connexion/déconnexion Google, à l'initiative de l'utilisateur. */
+export type ProfilStackParamList = {
+  ProfilHome: undefined;
+};
+
 export type RootTabParamList = {
   Recherche: NavigatorScreenParams<SearchStackParamList>;
   Scanner: NavigatorScreenParams<ScanStackParamList>;
   Découvrir: NavigatorScreenParams<DiscoverStackParamList>;
   'Ma bibliothèque': NavigatorScreenParams<LibraryStackParamList>;
+  Profil: NavigatorScreenParams<ProfilStackParamList>;
 };

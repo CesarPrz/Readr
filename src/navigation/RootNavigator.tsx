@@ -9,10 +9,12 @@ import ScanScreen from '../screens/ScanScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
+import ProfilScreen from '../screens/ProfilScreen';
 import { languageLabel } from '../utils/languageLabels';
 import type {
   DiscoverStackParamList,
   LibraryStackParamList,
+  ProfilStackParamList,
   RootTabParamList,
   ScanStackParamList,
   SearchStackParamList,
@@ -23,6 +25,7 @@ const SearchStack = createNativeStackNavigator<SearchStackParamList>();
 const ScanStack = createNativeStackNavigator<ScanStackParamList>();
 const DiscoverStack = createNativeStackNavigator<DiscoverStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
+const ProfilStack = createNativeStackNavigator<ProfilStackParamList>();
 
 const stackScreenOptions = {
   headerStyle: { backgroundColor: colors.background },
@@ -72,6 +75,14 @@ function LibraryStackNavigator() {
   );
 }
 
+function ProfilStackNavigator() {
+  return (
+    <ProfilStack.Navigator screenOptions={stackScreenOptions}>
+      <ProfilStack.Screen name="ProfilHome" component={ProfilScreen} options={{ title: 'Profil' }} />
+    </ProfilStack.Navigator>
+  );
+}
+
 export default function RootNavigator() {
   return (
     <Tab.Navigator
@@ -111,6 +122,13 @@ export default function RootNavigator() {
         component={LibraryStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="albums" color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Profil"
+        component={ProfilStackNavigator}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline" color={color} size={size} />,
         }}
       />
     </Tab.Navigator>

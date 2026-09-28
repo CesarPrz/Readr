@@ -1,6 +1,14 @@
-import { onAuthStateChanged, signInAnonymously, type User } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
+import {
+  GoogleAuthProvider,
+  linkWithCredential,
+  onAuthStateChanged,
+  signInAnonymously,
+  signOut,
+  type User,
+} from 'firebase/auth';
 import type { UserProfile } from '../../domain/entities/UserProfile';
-import type { AuthRepository } from '../../domain/repositories/AuthRepository';
+import { CredentialAlreadyInUseError, type AuthRepository } from '../../domain/repositories/AuthRepository';
 import { firebaseAuth } from './firebaseApp';
 import { toUserProfile } from './mappers';
 
@@ -44,5 +52,34 @@ export class FirebaseAuthRepository implements AuthRepository {
 
   getCurrentUser(): UserProfile | null {
     return this.current ? toUserProfile(this.current) : null;
+  }
+
+  async linkWithGoogle(idToken: string): Promise<UserProfile> {
+    const user = firebaseAuth.currentUser;
+    if (!user) {
+      // Ne devrait pas arriver : l'app appelle toujours `ensureSignedIn` au
+      // démarrage (voir App.tsx) avant qu'aucun écran ne soit accessible.
+      throw new Error('Aucune session active à lier — ensureSignedIn() aurait dû être résolu au démarrage.');
+    }
+
+    try {
+      const result = await linkWithCredential(user, GoogleAuthProvider.credential(idToken));
+      return toUserProfile(result.user);
+    } catch (error) {
+      // Ce compte Google est déjà associé à un AUTRE utilisateur Firebase
+      // (ex. app réinstallée, ou compte déjà lié sur un autre appareil).
+      // Convertit l'erreur brute Firebase en type domain dédié — voir
+      // `CredentialAlreadyInUseError`. Pas de tentative de fusion des
+      // bibliothèques ici (non prise en charge, voir doc Claude du projet,
+      // "firebase-social-plan") : on laisse l'appelant décider quoi afficher.
+      if (error instanceof FirebaseError && error.code === 'auth/credential-already-in-use') {
+        throw new CredentialAlreadyInUseError();
+      }
+      throw error;
+    }
+  }
+
+  async signOutCurrentUser(): Promise<void> {
+    await signOut(firebaseAuth);
   }
 }

@@ -16,14 +16,16 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cesar.readr"
+      "bundleIdentifier": "com.cesarprz.readr",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
-      "package": "com.cesar.readr",
+      "package": "com.cesarprz.readr",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1B1023"
-      }
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,7 +36,8 @@
         {
           "cameraPermission": "Autorise Readr à utiliser l'appareil photo pour scanner le code-barres d'un livre."
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ]
   }
 }
