@@ -2,6 +2,7 @@ import { FirebaseAuthRepository } from '../data/firebase/FirebaseAuthRepository'
 import { FirestoreBookStatsRepository } from '../data/firebase/FirestoreBookStatsRepository';
 import { FirestoreLibraryRepository } from '../data/firebase/FirestoreLibraryRepository';
 import { FirestoreListRepository } from '../data/firebase/FirestoreListRepository';
+import { FirestoreUserProfileRepository } from '../data/firebase/FirestoreUserProfileRepository';
 import { GoogleSignInProvider } from '../data/google/GoogleSignInProvider';
 import { AsyncStorageLibraryRepository } from '../data/local/AsyncStorageLibraryRepository';
 import { AsyncStorageListRepository } from '../data/local/AsyncStorageListRepository';
@@ -14,6 +15,7 @@ import type { LibraryRepository } from '../domain/repositories/LibraryRepository
 import type { LibrarySyncRepository } from '../domain/repositories/LibrarySyncRepository';
 import type { ListRepository } from '../domain/repositories/ListRepository';
 import type { ListSyncRepository } from '../domain/repositories/ListSyncRepository';
+import type { UserProfileRepository } from '../domain/repositories/UserProfileRepository';
 
 // The only file in the app allowed to import a concrete `data/` implementation.
 // Everywhere else (Redux slices, screens) depends on the domain interfaces above,
@@ -26,3 +28,4 @@ export const googleIdentityProvider: GoogleIdentityProvider = new GoogleSignInPr
 export const listRepository: ListRepository = new AsyncStorageListRepository();
 export const listSyncRepository: ListSyncRepository = new FirestoreListRepository();
 export const bookStatsRepository: BookStatsRepository = new FirestoreBookStatsRepository();
+export const userProfileRepository: UserProfileRepository = new FirestoreUserProfileRepository();

@@ -1,13 +1,14 @@
 // Règles Firestore — Phase 2 (sauvegarde perso) + "Listes de lecture
-// publiques" + "Recommandations collaboratives" (voir le plan Firebase, doc
-// Claude du projet). Depuis l'ajout des Cloud Functions (voir `functions/`),
-// ce fichier EST déployable via la Firebase CLI (`firebase deploy --only
-// firestore:rules`, voir `firebase.json`) — avant ça, le projet n'avait pas
-// de CLI du tout et ce fichier servait seulement de référence à coller
-// manuellement dans Firebase Console. Les deux méthodes marchent : coller
-// manuellement reste possible, mais le déploiement CLI est désormais la
-// marche à suivre recommandée, dans CHACUN des deux projets (dev et prod —
-// voir README, section "Environnements", pour `firebase use <alias>`).
+// publiques" + "Recommandations collaboratives" + "Profil fusionné" (voir le
+// plan Firebase, doc Claude du projet). Depuis l'ajout des Cloud Functions
+// (voir `functions/`), ce fichier EST déployable via la Firebase CLI
+// (`firebase deploy --only firestore:rules`, voir `firebase.json`) — avant
+// ça, le projet n'avait pas de CLI du tout et ce fichier servait seulement de
+// référence à coller manuellement dans Firebase Console. Les deux méthodes
+// marchent : coller manuellement reste possible, mais le déploiement CLI est
+// désormais la marche à suivre recommandée, dans CHACUN des deux projets
+// (dev et prod — voir README, section "Environnements", pour `firebase use
+// <alias>`).
 //
 // Décision produit ("Listes de lecture publiques") : les listes de lecture
 // et les livres qu'elles contiennent sont en LECTURE PUBLIQUE — n'importe
@@ -21,6 +22,17 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // "Profil fusionné" (07/10/2026) : pseudo public (`username`, modifiable
+    // à tout moment même resté anonyme) + miroir de la photo Google
+    // (`photoUrl`), voir `UserProfileRepository`. Même logique de lecture
+    // publique/écriture propriétaire que `library`/`lists` ci-dessous — posé
+    // en prévision de la Phase "Amis" (consultation du profil d'un AUTRE
+    // utilisateur), pas encore d'écran qui lit le profil de quelqu'un
+    // d'autre pour l'instant.
+    match /users/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
     match /users/{uid}/library/{bookId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;

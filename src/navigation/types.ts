@@ -49,15 +49,15 @@ export type LibraryStackParamList = {
   BookDetail: BookDetailParams;
 };
 
-/** Écran unique (Phase 3 du plan Firebase) : connexion/déconnexion Google, à l'initiative de l'utilisateur. */
-export type ProfilStackParamList = {
-  ProfilHome: undefined;
-};
+// L'onglet Profil dédié (Phase 3 du plan Firebase) et son
+// `ProfilStackParamList` ont disparu avec "Profil fusionné" (07/10/2026) :
+// le profil (avatar, pseudo, connexion Google) vit désormais en en-tête de
+// `LibraryStackParamList.LibraryHome`, voir `ProfileHeader.tsx` et
+// `LibraryScreen.tsx`.
 
 export type RootTabParamList = {
   Recherche: NavigatorScreenParams<SearchStackParamList>;
   Scanner: NavigatorScreenParams<ScanStackParamList>;
   Découvrir: NavigatorScreenParams<DiscoverStackParamList>;
   'Ma bibliothèque': NavigatorScreenParams<LibraryStackParamList>;
-  Profil: NavigatorScreenParams<ProfilStackParamList>;
 };

@@ -10,12 +10,10 @@ import DiscoverScreen from '../screens/DiscoverScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ListDetailScreen from '../screens/ListDetailScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
-import ProfilScreen from '../screens/ProfilScreen';
 import { languageLabel } from '../utils/languageLabels';
 import type {
   DiscoverStackParamList,
   LibraryStackParamList,
-  ProfilStackParamList,
   RootTabParamList,
   ScanStackParamList,
   SearchStackParamList,
@@ -26,7 +24,6 @@ const SearchStack = createNativeStackNavigator<SearchStackParamList>();
 const ScanStack = createNativeStackNavigator<ScanStackParamList>();
 const DiscoverStack = createNativeStackNavigator<DiscoverStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
-const ProfilStack = createNativeStackNavigator<ProfilStackParamList>();
 
 const stackScreenOptions = {
   headerStyle: { backgroundColor: colors.background },
@@ -70,6 +67,12 @@ function DiscoverStackNavigator() {
 function LibraryStackNavigator() {
   return (
     <LibraryStack.Navigator screenOptions={stackScreenOptions}>
+      {/*
+        Depuis "Profil fusionné" (07/10/2026, plan Firebase), cet écran
+        affiche aussi le profil (avatar, pseudo, connexion Google) en
+        en-tête — voir `ProfileHeader.tsx` et `LibraryScreen.tsx`. L'ancien
+        onglet Profil dédié a disparu, remplacé par rien de plus que ça.
+      */}
       <LibraryStack.Screen name="LibraryHome" component={LibraryScreen} options={{ title: 'Ma bibliothèque' }} />
       <LibraryStack.Screen
         name="ListDetail"
@@ -81,14 +84,6 @@ function LibraryStackNavigator() {
       />
       <LibraryStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
     </LibraryStack.Navigator>
-  );
-}
-
-function ProfilStackNavigator() {
-  return (
-    <ProfilStack.Navigator screenOptions={stackScreenOptions}>
-      <ProfilStack.Screen name="ProfilHome" component={ProfilScreen} options={{ title: 'Profil' }} />
-    </ProfilStack.Navigator>
   );
 }
 
@@ -131,13 +126,6 @@ export default function RootNavigator() {
         component={LibraryStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="albums" color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
-        name="Profil"
-        component={ProfilStackNavigator}
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-circle-outline" color={color} size={size} />,
         }}
       />
     </Tab.Navigator>

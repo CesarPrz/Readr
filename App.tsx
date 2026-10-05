@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
 import { store } from './src/store/store';
-import { ensureSignedIn } from './src/store/authSlice';
+import { ensureSignedIn, loadUserProfile } from './src/store/authSlice';
 import { fetchLibrary, refreshLibrary, syncLibraryToCloud } from './src/store/librarySlice';
 import { fetchLists, refreshLists, syncListsToCloud } from './src/store/listsSlice';
 import { navigationTheme } from './src/theme/theme';
@@ -23,6 +23,14 @@ export default function App() {
         store.dispatch(fetchLists()),
         store.dispatch(ensureSignedIn()),
       ]);
+      // Pseudo public ("Profil fusionné", voir le plan Firebase) : a besoin
+      // du `uid` résolu par `ensureSignedIn` juste au-dessus, donc dispatché
+      // seulement maintenant, pas dans le `Promise.all` ci-dessus. Pas
+      // attendu (best-effort, comme la synchronisation cloud) : l'écran
+      // affiche entre-temps le même pseudonyme généré que ce thunk
+      // appliquerait de toute façon s'il ne trouve rien à charger — voir
+      // `UserProfile.username` et `loadUserProfile.ts`.
+      store.dispatch(loadUserProfile());
       // Révision locale juste avant de lancer la sauvegarde en masse — voir
       // la doc de `refreshLibrary`/`refreshLists` (librarySlice/listsSlice) :
       // c'est ce repère qui permettra, une fois le cycle push+pull terminé,

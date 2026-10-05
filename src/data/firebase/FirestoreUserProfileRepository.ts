@@ -1,0 +1,49 @@
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import type { PublicUserProfile, UserProfileRepository } from '../../domain/repositories/UserProfileRepository';
+import { firestoreDb } from './firebaseApp';
+
+/**
+ * `users/{uid}` — voir `UserProfileRepository` pour le contrat complet.
+ * Pas de contrainte d'encodage d'id ici (contrairement à `library`/
+ * `bookStats`) : `uid` est déjà un id Firebase Auth, toujours un segment de
+ * chemin Firestore valide.
+ */
+export class FirestoreUserProfileRepository implements UserProfileRepository {
+  async fetchProfile(uid: string): Promise<PublicUserProfile | null> {
+    try {
+      const snapshot = await getDoc(doc(firestoreDb, 'users', uid));
+      if (!snapshot.exists()) return null;
+
+      const data = snapshot.data();
+      return {
+        username: typeof data.username === 'string' ? data.username : '',
+        photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : undefined,
+      };
+    } catch {
+      return null; // best-effort, voir la doc du port — jamais bloquant pour l'utilisateur
+    }
+  }
+
+  async upsertProfile(uid: string, patch: Partial<PublicUserProfile>): Promise<void> {
+    try {
+      // `{ merge: true }` : une mise à jour du pseudo ne doit jamais effacer
+      // une photo déjà publiée (ou inversement) — chaque appelant ne fournit
+      // que les champs qu'il modifie (voir `updateUsername.ts`,
+      // `syncProfilePhotoToCloud.ts`). `?? null` : Firestore refuse
+      // `undefined` comme valeur de champ, même méthode que
+      // `toFirestoreLibraryEntry` (voir mappers.ts).
+      await setDoc(
+        doc(firestoreDb, 'users', uid),
+        {
+          ...('username' in patch ? { username: patch.username } : {}),
+          ...('photoUrl' in patch ? { photoUrl: patch.photoUrl ?? null } : {}),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    } catch {
+      // best-effort — voir la doc du port ; l'appelant reste quand même
+      // à jour localement (mise à jour optimiste côté Redux, voir authSlice).
+    }
+  }
+}

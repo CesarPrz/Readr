@@ -3,10 +3,13 @@ import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'r
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import ListPlaylistRow from '../components/ListPlaylistRow';
+import ProfileHeader from '../components/ProfileHeader';
 import { bookRepository } from '../composition/repositories';
 import { DEFAULT_LIST_IDS, type ReadingList } from '../domain/entities/ReadingList';
+import { generateAnonymousPseudonym } from '../utils/anonymousPseudonym';
 import { useLibrarySync } from '../hooks/useLibrarySync';
 import type { LibraryStackParamList } from '../navigation/types';
+import { linkGoogleAccount, signOutUser, updateUsername } from '../store/authSlice';
 import { createList, deleteList } from '../store/listsSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, radius, spacing, typography } from '../theme/theme';
@@ -19,19 +22,24 @@ type Props = NativeStackScreenProps<LibraryStackParamList, 'LibraryHome'>;
 const DEFAULT_ORDER = [DEFAULT_LIST_IDS.toRead, DEFAULT_LIST_IDS.reading, DEFAULT_LIST_IDS.read, DEFAULT_LIST_IDS.liked];
 
 /**
- * Écran d'accueil de l'onglet Bibliothèque — style "Ta bibliothèque"
- * Spotify : une colonne de lignes "playlist" (une par liste de lecture),
- * chacune avec sa vignette, son nom et son nombre de livres, qui ouvre le
- * contenu de la liste (`ListDetailScreen`) au tap. Remplace l'ancienne
- * disposition à onglets horizontaux + grille inline, dont l'espacement ne
- * se comportait pas bien à l'usage. Prépare aussi naturellement les listes
- * personnalisées : en ajouter une, c'est simplement ajouter une ligne de
- * plus ici, sans rien à adapter dans la mise en page.
+ * Écran d'accueil de l'onglet Bibliothèque — "Profil fusionné" (07/10/2026,
+ * plan Firebase) : en-tête de profil (`ProfileHeader` — avatar, pseudo
+ * éditable, connexion Google, voir ce composant et son historique) suivi
+ * d'une colonne de lignes "playlist" façon Spotify (une par liste de
+ * lecture, voir `ListPlaylistRow`), chacune ouvrant le contenu de la liste
+ * (`ListDetailScreen`) au tap. Avant cette fusion, le profil vivait dans son
+ * propre onglet (`ProfilScreen`, désormais obsolète — voir CLAUDE.md) :
+ * rassemblé ici pour que "mon profil" et "mes livres" soient une seule et
+ * même chose du point de vue de l'utilisateur, et pour uniformiser la mise
+ * en page avec ce que montrera plus tard le profil d'un AUTRE utilisateur
+ * (Phase "Amis", pas encore construite — `ProfileHeader` est déjà prêt pour
+ * un mode lecture seule, voir `editable`).
  */
 export default function LibraryScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
   const entries = useAppSelector((state) => state.library.entries);
   const lists = useAppSelector((state) => state.lists.lists);
+  const { user, googleLinkStatus, googleLinkError } = useAppSelector((state) => state.auth);
   const [creating, setCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
 
@@ -69,45 +77,91 @@ export default function LibraryScreen({ navigation }: Props) {
     );
   };
 
+  // Repris tel quel de l'ancien `ProfilScreen` (voir CLAUDE.md pour
+  // l'historique de "Bascule vers un compte existant").
+  const handleGoogleSignIn = async () => {
+    const result = await dispatch(linkGoogleAccount());
+    if (linkGoogleAccount.rejected.match(result)) {
+      Alert.alert('Connexion impossible', result.error.message ?? 'Réessaie plus tard.');
+      return;
+    }
+    if (linkGoogleAccount.fulfilled.match(result) && result.payload.status === 'switched') {
+      Alert.alert(
+        'Compte retrouvé',
+        'Ce compte Google était déjà utilisé par un autre profil Readr. Tu es maintenant connecté à ce compte, et sa bibliothèque a été restaurée sur cet appareil.',
+      );
+    }
+  };
+
+  const handleSignOut = () => {
+    Alert.alert('Se déconnecter ?', 'Tu pourras te reconnecter avec le même compte Google à tout moment.', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Se déconnecter', style: 'destructive', onPress: () => dispatch(signOutUser()) },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Mes listes</Text>
-        <Pressable style={styles.addButton} onPress={() => setCreating(true)} hitSlop={8}>
-          <Ionicons name="add" size={20} color={colors.primaryText} />
-        </Pressable>
-      </View>
-
-      {creating && (
-        <View style={styles.createRow}>
-          <TextInput
-            value={newListName}
-            onChangeText={setNewListName}
-            placeholder="Nom de la nouvelle liste"
-            placeholderTextColor={colors.placeholder}
-            style={styles.createInput}
-            autoFocus
-            onSubmitEditing={handleCreateList}
-          />
-          <Pressable style={styles.createConfirm} onPress={handleCreateList}>
-            <Ionicons name="checkmark" size={18} color={colors.background} />
-          </Pressable>
-          <Pressable
-            style={styles.createCancel}
-            onPress={() => {
-              setCreating(false);
-              setNewListName('');
-            }}
-          >
-            <Ionicons name="close" size={18} color={colors.secondaryText} />
-          </Pressable>
-        </View>
-      )}
-
       <FlatList
         data={orderedLists}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listRows}
+        ListHeaderComponent={
+          <>
+            {/*
+              `user` peut très brièvement valoir `null` juste après le
+              démarrage (avant que `ensureSignedIn` ne résolve, voir
+              App.tsx) — pas de repli affiché pendant cette fenêtre, comme
+              l'ancien `ProfilScreen` le faisait déjà pour son pseudonyme.
+            */}
+            {user && (
+              <ProfileHeader
+                username={user.username ?? generateAnonymousPseudonym(user.uid)}
+                photoUrl={user.photoUrl}
+                isAnonymous={user.isAnonymous}
+                editable
+                onEditUsername={(newUsername) => dispatch(updateUsername(newUsername))}
+                onGoogleSignIn={handleGoogleSignIn}
+                onSignOut={handleSignOut}
+                googleLinkStatus={googleLinkStatus}
+                googleLinkError={googleLinkError}
+              />
+            )}
+
+            <View style={styles.headerRow}>
+              <Text style={styles.headerTitle}>Mes listes</Text>
+              <Pressable style={styles.addButton} onPress={() => setCreating(true)} hitSlop={8}>
+                <Ionicons name="add" size={20} color={colors.primaryText} />
+              </Pressable>
+            </View>
+
+            {creating && (
+              <View style={styles.createRow}>
+                <TextInput
+                  value={newListName}
+                  onChangeText={setNewListName}
+                  placeholder="Nom de la nouvelle liste"
+                  placeholderTextColor={colors.placeholder}
+                  style={styles.createInput}
+                  autoFocus
+                  onSubmitEditing={handleCreateList}
+                />
+                <Pressable style={styles.createConfirm} onPress={handleCreateList}>
+                  <Ionicons name="checkmark" size={18} color={colors.background} />
+                </Pressable>
+                <Pressable
+                  style={styles.createCancel}
+                  onPress={() => {
+                    setCreating(false);
+                    setNewListName('');
+                  }}
+                >
+                  <Ionicons name="close" size={18} color={colors.secondaryText} />
+                </Pressable>
+              </View>
+            )}
+          </>
+        }
         renderItem={({ item }) => {
           const inList = entries.filter((e) => e.listIds.includes(item.id));
           const mostRecent = [...inList].sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())[0];
