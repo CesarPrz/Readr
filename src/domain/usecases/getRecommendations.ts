@@ -4,6 +4,7 @@ import { DEFAULT_LIST_IDS } from '../entities/ReadingList';
 import type { RecommendationGroup } from '../entities/RecommendationGroup';
 import type { BookRepository } from '../repositories/BookRepository';
 import type { BookStatsRepository } from '../repositories/BookStatsRepository';
+import { matchKnownGenre, type GenreMatch } from '../../utils/genreLabels';
 
 const MAX_AUTHOR_GROUPS_PER_REASON = 2;
 const MAX_COLLAB_GROUPS = 2; // limite de groupes "les lecteurs qui ont aimé/lu X ont aussi..." générés
@@ -21,8 +22,10 @@ const MAX_GENRE_CANDIDATES = 2; // livres essayés pour trouver un genre — pas
  * ont aussi aimé" (collaboratif, voir plus bas — le signal le plus "social",
  * placé en premier), "Car vous avez lu X (et Y)" (par auteur, livres au
  * statut "lu"), "Car vous avez aimé X (et Y)" (par auteur, livres `liked`),
- * puis au plus un "D'autres classiques du genre <sujet>" (basé sur les
- * sujets Open Library du livre lu/aimé le plus récent). Un même livre n'est
+ * puis au plus un "D'autres livres du genre <genre>" (genre reconnu parmi
+ * une liste usuelle — Horreur, Policier, Romance, Fantasy, Biographie...,
+ * voir `utils/genreLabels.ts` — à partir des sujets Open Library du livre
+ * lu/aimé le plus récent). Un même livre n'est
  * jamais recommandé deux fois à travers des groupes différents (voir
  * `excludedIds`, qui démarre à la bibliothèque possédée et grossit au fur et
  * à mesure) ; un même auteur non plus pour les groupes par auteur (le
@@ -189,12 +192,22 @@ async function searchExcluding(repo: BookRepository, query: string, excludedIds:
 
 /**
  * Utilise les sujets Open Library (`BookDetail.subjects`) du livre lu ou aimé
- * le plus récent pour proposer "d'autres classiques" du même genre.
- * Heuristique faible : `subjects[0]` est pris tel quel comme libellé de genre
- * — les sujets Open Library forment une liste libre (mélange de genres,
- * thèmes, prix littéraires...), pas une taxonomie de genres propre, et
- * souvent en anglais même pour un livre francophone. Pas de groupe généré si
- * aucun sujet exploitable n'est trouvé, plutôt qu'un genre approximatif.
+ * le plus récent pour proposer "d'autres livres" du même genre — un genre
+ * reconnu parmi une liste usuelle (Horreur, Policier, Romance, Fantasy,
+ * Biographie...), pas un sujet Open Library brut.
+ *
+ * **Changement du 07/10/2026, demande explicite du porteur du projet** :
+ * l'ancien comportement prenait `subjects[0]` tel quel comme libellé de
+ * genre (les sujets Open Library forment une liste libre, mélange de
+ * genres/thèmes/lieux/prix littéraires, pas une taxonomie de genres propre)
+ * — ça a fini par afficher littéralement "D'autres classiques du genre
+ * 'Holes'" (le titre d'un autre roman, catalogué comme sujet par Open
+ * Library sur un des livres de la bibliothèque, pas un genre du tout).
+ * `matchKnownGenre` (voir `utils/genreLabels.ts`) compare désormais CHAQUE
+ * sujet du livre à une liste fermée de genres usuels, et retient le premier
+ * qui correspond. Pas de groupe généré si aucun sujet ne correspond à un
+ * genre connu — mieux vaut l'absence de row qu'un libellé qui n'a jamais été
+ * un genre.
  */
 async function genreRecommendationGroup(
   repo: BookRepository,
@@ -207,15 +220,20 @@ async function genreRecommendationGroup(
     .slice(0, MAX_GENRE_CANDIDATES);
 
   for (const entry of candidates) {
-    const genre = await primaryGenre(repo, entry.workKeys);
-    if (!genre) continue;
+    const match = await findGenreMatch(repo, entry.workKeys);
+    if (!match) continue;
 
-    const books = await searchExcluding(repo, `subject:"${genre}"`, excludedIds);
+    // La requête Open Library utilise le sujet brut qui a servi à la
+    // correspondance (ex. "Detective and mystery stories"), jamais le
+    // libellé français affiché (ex. "Policier") — Open Library n'indexe pas
+    // ses sujets en français, une recherche sur le libellé traduit ne
+    // renverrait rien.
+    const books = await searchExcluding(repo, `subject:"${match.openLibrarySubject}"`, excludedIds);
     if (books.length === 0) continue;
 
     return {
-      id: `genre:${genre}`,
-      title: `D'autres classiques du genre "${genre}"`,
+      id: `genre:${match.label}`,
+      title: `D'autres livres du genre "${match.label}"`,
       books: books.slice(0, MAX_BOOKS_PER_GROUP),
     };
   }
@@ -223,10 +241,10 @@ async function genreRecommendationGroup(
   return undefined;
 }
 
-async function primaryGenre(repo: BookRepository, workKeys: string[]): Promise<string | undefined> {
+async function findGenreMatch(repo: BookRepository, workKeys: string[]): Promise<GenreMatch | undefined> {
   try {
     const detail = await repo.getDetail(workKeys);
-    return detail.subjects[0];
+    return matchKnownGenre(detail.subjects);
   } catch {
     return undefined;
   }
