@@ -1,7 +1,8 @@
 import type { LibraryEntry } from '../entities/LibraryEntry';
 import type { LibraryRepository } from '../repositories/LibraryRepository';
 
-export type LibraryEntryPatch = Partial<Pick<LibraryEntry, 'status' | 'liked' | 'rating' | 'note'>>;
+/** Statut de lecture et appartenance aux listes passent désormais par `toggleBookList` (voir ReadingList.ts) — ce usecase ne gère plus que note/note. */
+export type LibraryEntryPatch = Partial<Pick<LibraryEntry, 'rating' | 'note'>>;
 
 export async function updateLibraryEntry(
   repo: LibraryRepository,

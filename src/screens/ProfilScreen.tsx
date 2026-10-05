@@ -30,6 +30,17 @@ export default function ProfilScreen() {
     const result = await dispatch(linkGoogleAccount());
     if (linkGoogleAccount.rejected.match(result)) {
       Alert.alert('Connexion impossible', result.error.message ?? 'Réessaie plus tard.');
+      return;
+    }
+    // `status: 'switched'` : ce compte Google était déjà utilisé par un autre
+    // profil Readr — l'app a basculé dessus et restauré sa bibliothèque/ses
+    // listes (voir le usecase `linkGoogleAccount`). On le dit clairement,
+    // sinon la bibliothèque locale change sans explication à l'écran.
+    if (linkGoogleAccount.fulfilled.match(result) && result.payload.status === 'switched') {
+      Alert.alert(
+        'Compte retrouvé',
+        'Ce compte Google était déjà utilisé par un autre profil Readr. Tu es maintenant connecté à ce compte, et sa bibliothèque a été restaurée sur cet appareil.',
+      );
     }
   };
 

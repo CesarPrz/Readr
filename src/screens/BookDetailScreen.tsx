@@ -7,6 +7,7 @@ import RatingStars from '../components/RatingStars';
 import StatusSegmented from '../components/StatusSegmented';
 import { bookRepository } from '../composition/repositories';
 import type { Book } from '../domain/entities/Book';
+import { DEFAULT_LIST_IDS, EXCLUSIVE_STATUS_LIST_IDS } from '../domain/entities/ReadingList';
 import type {
   DiscoverStackParamList,
   LibraryStackParamList,
@@ -15,7 +16,7 @@ import type {
 } from '../navigation/types';
 import { fetchBookDetail } from '../store/bookDetailSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { addBook, patchLibraryEntry, removeBook } from '../store/librarySlice';
+import { addBook, patchLibraryEntry, removeBook, toggleBookList } from '../store/librarySlice';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import { languageLabel } from '../utils/languageLabels';
 
@@ -37,6 +38,7 @@ export default function BookDetailScreen({ route }: Props) {
   } = route.params;
   const dispatch = useAppDispatch();
   const entry = useAppSelector((state) => state.library.entries.find((e) => e.id === workKey));
+  const customLists = useAppSelector((state) => state.lists.lists.filter((l) => !l.isDefault));
   const { detail, status: detailStatus, currentId } = useAppSelector((state) => state.bookDetail);
   const [noteDraft, setNoteDraft] = useState('');
 
@@ -105,19 +107,25 @@ export default function BookDetailScreen({ route }: Props) {
     [workKey, presetWorkKeys, presetTitle, presetAuthors, presetCoverId, presetCoverUrl, presetDescription, presetLanguages],
   );
 
-  const liked = entry?.liked ?? false;
+  const liked = entry?.listIds.includes(DEFAULT_LIST_IDS.liked) ?? false;
+  // La liste de statut actuelle (À lire/En cours/Lu) — "À lire" par défaut
+  // tant que le livre n'est pas encore dans la bibliothèque, cohérent avec
+  // `addBookToLibrary` (voir sa doc).
+  const currentStatusListId =
+    entry?.listIds.find((id) => EXCLUSIVE_STATUS_LIST_IDS.includes(id)) ?? DEFAULT_LIST_IDS.toRead;
 
   // Si le livre n'est pas encore dans la bibliothèque, aimer l'ajoute directement
-  // (statut "à lire" par défaut) plutôt que d'obliger à d'abord appuyer sur
-  // "Ajouter à ma bibliothèque" — "Aimé" reste malgré tout une des listes de la
-  // bibliothèque (voir LibraryScreen), un livre non ajouté ne peut pas y figurer.
+  // (statut "à lire" par défaut, en plus d'"Aimés") plutôt que d'obliger à d'abord
+  // appuyer sur "Ajouter à ma bibliothèque" — "Aimés" reste malgré tout une des
+  // listes de la bibliothèque (voir LibraryScreen), un livre non ajouté ne peut
+  // pas y figurer.
   const toggleLiked = useCallback(() => {
     if (entry) {
-      dispatch(patchLibraryEntry({ id: workKey, patch: { liked: !entry.liked } }));
+      dispatch(toggleBookList({ bookId: workKey, listId: DEFAULT_LIST_IDS.liked, add: !liked }));
     } else {
-      dispatch(addBook({ book: presetBook, liked: true }));
+      dispatch(addBook({ book: presetBook, listId: DEFAULT_LIST_IDS.liked }));
     }
-  }, [dispatch, entry, workKey, presetBook]);
+  }, [dispatch, entry, liked, workKey, presetBook]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -179,8 +187,8 @@ export default function BookDetailScreen({ route }: Props) {
         <View style={styles.libraryControls}>
           <Text style={styles.sectionLabel}>Statut de lecture</Text>
           <StatusSegmented
-            value={entry.status}
-            onChange={(next) => dispatch(patchLibraryEntry({ id: workKey, patch: { status: next } }))}
+            value={currentStatusListId}
+            onChange={(next) => dispatch(toggleBookList({ bookId: workKey, listId: next, add: true }))}
           />
 
           <Text style={[styles.sectionLabel, styles.spacedLabel]}>Ma note</Text>
@@ -199,6 +207,28 @@ export default function BookDetailScreen({ route }: Props) {
             style={styles.noteInput}
             multiline
           />
+
+          <Text style={[styles.sectionLabel, styles.spacedLabel]}>Mes listes</Text>
+          {customLists.length > 0 ? (
+            <View style={styles.customListsRow}>
+              {customLists.map((list) => {
+                const inThisList = entry.listIds.includes(list.id);
+                return (
+                  <Pressable
+                    key={list.id}
+                    style={[styles.listChip, inThisList && styles.listChipActive]}
+                    onPress={() => dispatch(toggleBookList({ bookId: workKey, listId: list.id, add: !inThisList }))}
+                  >
+                    <Text style={[styles.listChipText, inThisList && styles.listChipTextActive]}>{list.name}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={styles.description}>
+              Crée des listes perso depuis l'onglet Ma bibliothèque pour organiser tes livres.
+            </Text>
+          )}
         </View>
       )}
 
@@ -351,5 +381,31 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: spacing.lg,
+  },
+  customListsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: spacing.sm,
+  },
+  listChip: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  listChipActive: {
+    backgroundColor: colors.accentOrange,
+    borderColor: colors.accentOrange,
+  },
+  listChipText: {
+    ...typography.body,
+    fontSize: 12,
+  },
+  listChipTextActive: {
+    color: colors.background,
   },
 });

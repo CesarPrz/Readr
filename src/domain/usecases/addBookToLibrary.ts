@@ -1,18 +1,19 @@
 import type { Book } from '../entities/Book';
-import type { LibraryEntry, ReadingStatus } from '../entities/LibraryEntry';
+import type { LibraryEntry } from '../entities/LibraryEntry';
+import { DEFAULT_LIST_IDS } from '../entities/ReadingList';
 import type { LibraryRepository } from '../repositories/LibraryRepository';
 
 /**
  * Adds a book to the library unless it's already there, and persists the
- * result. `liked` lets the heart bubble on the detail screen add-and-like a
- * book in one tap, without going through a separate `updateLibraryEntry` call.
+ * result. `initialListId` (par défaut "À lire") lets la bulle cœur sur
+ * l'écran détail ajouter et aimer un livre en un seul geste
+ * (`DEFAULT_LIST_IDS.liked`), sans passer par un `toggleBookList` séparé.
  */
 export async function addBookToLibrary(
   repo: LibraryRepository,
   currentEntries: LibraryEntry[],
   book: Book,
-  status: ReadingStatus = 'to_read',
-  liked = false,
+  initialListId: string = DEFAULT_LIST_IDS.toRead,
 ): Promise<LibraryEntry[]> {
   if (currentEntries.some((e) => e.id === book.id)) return currentEntries;
 
@@ -25,8 +26,7 @@ export async function addBookToLibrary(
     coverUrl: book.coverUrl,
     description: book.description,
     languages: book.languages,
-    status,
-    liked,
+    listIds: [initialListId],
     addedAt: new Date().toISOString(),
   };
   const next = [entry, ...currentEntries];

@@ -4,11 +4,12 @@ import {
   linkWithCredential,
   onAuthStateChanged,
   signInAnonymously,
+  signInWithCredential,
   signOut,
   type User,
 } from 'firebase/auth';
 import type { UserProfile } from '../../domain/entities/UserProfile';
-import { CredentialAlreadyInUseError, type AuthRepository } from '../../domain/repositories/AuthRepository';
+import type { AuthRepository, LinkGoogleOutcome } from '../../domain/repositories/AuthRepository';
 import { firebaseAuth } from './firebaseApp';
 import { toUserProfile } from './mappers';
 
@@ -54,7 +55,7 @@ export class FirebaseAuthRepository implements AuthRepository {
     return this.current ? toUserProfile(this.current) : null;
   }
 
-  async linkWithGoogle(idToken: string): Promise<UserProfile> {
+  async linkWithGoogle(idToken: string): Promise<LinkGoogleOutcome> {
     const user = firebaseAuth.currentUser;
     if (!user) {
       // Ne devrait pas arriver : l'app appelle toujours `ensureSignedIn` au
@@ -62,18 +63,50 @@ export class FirebaseAuthRepository implements AuthRepository {
       throw new Error('Aucune session active à lier — ensureSignedIn() aurait dû être résolu au démarrage.');
     }
 
+    console.log('[Readr][debug bascule] linkWithGoogle: tentative linkWithCredential sur uid', user.uid);
     try {
       const result = await linkWithCredential(user, GoogleAuthProvider.credential(idToken));
-      return toUserProfile(result.user);
+      console.log('[Readr][debug bascule] linkWithCredential réussi, même uid', result.user.uid);
+      return { profile: toUserProfile(result.user), switchedToExistingAccount: false };
     } catch (error) {
+      console.log(
+        '[Readr][debug bascule] linkWithCredential a échoué :',
+        error instanceof FirebaseError ? error.code : error,
+      );
       // Ce compte Google est déjà associé à un AUTRE utilisateur Firebase
-      // (ex. app réinstallée, ou compte déjà lié sur un autre appareil).
-      // Convertit l'erreur brute Firebase en type domain dédié — voir
-      // `CredentialAlreadyInUseError`. Pas de tentative de fusion des
-      // bibliothèques ici (non prise en charge, voir doc Claude du projet,
-      // "firebase-social-plan") : on laisse l'appelant décider quoi afficher.
+      // (ex. app réinstallée, ou compte déjà lié sur un autre appareil) :
+      // plutôt que d'échouer (ancien comportement, voir la doc de
+      // `AuthRepository.linkWithGoogle`), on connecte directement la session
+      // à ce compte existant — `signInWithCredential` (pas `linkWithCredential`)
+      // abandonne la session anonyme courante au profit de celle déjà
+      // associée à ce compte Google. C'est très probablement le même
+      // utilisateur (app réinstallée, nouvel appareil) : Google a déjà
+      // vérifié son identité pour nous. Credential recréée à partir du même
+      // idToken (pas la même instance que celle consommée par la tentative
+      // ci-dessus) par prudence.
       if (error instanceof FirebaseError && error.code === 'auth/credential-already-in-use') {
-        throw new CredentialAlreadyInUseError();
+        console.log('[Readr][debug bascule] tentative signInWithCredential sur le compte existant...');
+        const result = await signInWithCredential(firebaseAuth, GoogleAuthProvider.credential(idToken));
+        console.log('[Readr][debug bascule] signInWithCredential réussi, nouveau uid', result.user.uid);
+        return { profile: toUserProfile(result.user), switchedToExistingAccount: true };
+      }
+      // Cas de reprise : un essai précédent a déjà basculé cette session sur
+      // le compte existant (branche ci-dessus) mais la restauration Firestore
+      // qui suit (voir `linkGoogleAccount`) a échoué ensuite — ex. règles pas
+      // encore publiées au moment du premier essai — avant que l'état Redux
+      // n'ait pu être mis à jour (il n'est mis à jour qu'au succès complet du
+      // usecase). `firebaseAuth.currentUser` porte donc déjà ce compte
+      // existant, Google y est déjà lié : retenter `linkWithCredential`
+      // échoue avec `auth/provider-already-linked`, pas avec
+      // `credential-already-in-use` (l'erreur diffère parce que cette fois
+      // c'est le même utilisateur courant qui a déjà ce fournisseur, pas un
+      // autre). On traite ce cas comme une bascule déjà faite — `user` (capturé
+      // en haut de la méthode) EST déjà ce compte, inutile de rappeler
+      // `signInWithCredential` — pour que `linkGoogleAccount` retente juste la
+      // restauration Firestore.
+      if (error instanceof FirebaseError && error.code === 'auth/provider-already-linked') {
+        console.log('[Readr][debug bascule] déjà basculé lors d’un essai précédent, reprise sur uid', user.uid);
+        return { profile: toUserProfile(user), switchedToExistingAccount: true };
       }
       throw error;
     }

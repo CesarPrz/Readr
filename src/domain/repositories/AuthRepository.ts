@@ -25,13 +25,21 @@ export interface AuthRepository {
    * bibliothèque cloud existante (Phase 2) reste associée. Ne fait rien côté
    * Google lui-même : voir `GoogleIdentityProvider` pour obtenir ce token.
    *
-   * Lève `CredentialAlreadyInUseError` si ce compte Google est déjà lié à un
-   * AUTRE utilisateur Firebase (ex. l'app a été réinstallée, ou le compte est
-   * déjà utilisé sur un autre appareil) — la fusion des bibliothèques n'est
-   * pas encore prise en charge (voir doc Claude du projet,
-   * "firebase-social-plan"), l'appelant doit juste en informer l'utilisateur.
+   * Si ce compte Google est déjà lié à un AUTRE utilisateur Firebase (ex.
+   * l'app a été réinstallée, ou le compte est déjà utilisé sur un autre
+   * appareil), la session courante **bascule automatiquement vers ce compte
+   * existant** (`switchedToExistingAccount: true` dans le résultat) plutôt
+   * que d'échouer — revirement par rapport à la décision initiale de "juste
+   * informer l'utilisateur" (voir le plan Firebase, doc Claude du projet,
+   * "firebase-social-plan", section "Bascule vers un compte existant") :
+   * Google a déjà vérifié l'identité de la personne pour nous, inutile de la
+   * laisser bloquée sur un compte anonyme. L'appelant (voir le usecase
+   * `linkGoogleAccount`) est alors responsable de restaurer la
+   * bibliothèque/les listes de ce compte existant depuis Firestore — la
+   * session anonyme abandonnée n'a plus de raison d'être affichée une fois
+   * l'identité changée.
    */
-  linkWithGoogle(idToken: string): Promise<UserProfile>;
+  linkWithGoogle(idToken: string): Promise<LinkGoogleOutcome>;
 
   /**
    * Déconnecte l'utilisateur courant. Ne touche jamais à la bibliothèque
@@ -41,15 +49,8 @@ export interface AuthRepository {
   signOutCurrentUser(): Promise<void>;
 }
 
-/**
- * Voir `AuthRepository.linkWithGoogle`. Type dédié (plutôt que de laisser
- * fuiter l'erreur Firebase brute `auth/credential-already-in-use`) pour que
- * le domain et l'UI puissent réagir à ce cas précis sans rien savoir de
- * Firebase.
- */
-export class CredentialAlreadyInUseError extends Error {
-  constructor() {
-    super('Ce compte Google est déjà utilisé par un autre profil Readr.');
-    this.name = 'CredentialAlreadyInUseError';
-  }
-}
+/** Résultat de `AuthRepository.linkWithGoogle` — voir sa doc pour `switchedToExistingAccount`. */
+export type LinkGoogleOutcome = {
+  profile: UserProfile;
+  switchedToExistingAccount: boolean;
+};

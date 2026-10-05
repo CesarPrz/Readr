@@ -15,10 +15,17 @@ export async function syncLibraryEntry(
   uid: string | undefined,
   entry: LibraryEntry,
 ): Promise<void> {
-  if (!uid) return; // connexion anonyme pas encore résolue — tant pis pour cette fois, pas bloquant
+  if (!uid) {
+    console.log('[Readr][debug sync] syncLibraryEntry: pas de uid, écriture ignorée pour', entry.id);
+    return; // connexion anonyme pas encore résolue — tant pis pour cette fois, pas bloquant
+  }
   try {
+    console.log('[Readr][debug sync] syncLibraryEntry: upsertEntry', entry.id, 'pour uid', uid);
     await repo.upsertEntry(uid, entry);
-  } catch {
-    // Échec silencieux volontaire — voir la doc de la fonction.
+    console.log('[Readr][debug sync] syncLibraryEntry: upsertEntry réussi', entry.id);
+  } catch (error) {
+    // Échec silencieux volontaire pour l'appelant — voir la doc de la
+    // fonction — mais loggé pour le diagnostic (temporaire).
+    console.log('[Readr][debug sync] syncLibraryEntry: upsertEntry a échoué pour', entry.id, ':', error);
   }
 }

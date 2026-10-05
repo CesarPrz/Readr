@@ -1,98 +1,130 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import BookCard from '../components/BookCard';
+import ListPlaylistRow from '../components/ListPlaylistRow';
 import { bookRepository } from '../composition/repositories';
-import type { ReadingStatus } from '../domain/entities/LibraryEntry';
+import { DEFAULT_LIST_IDS, type ReadingList } from '../domain/entities/ReadingList';
+import { useLibrarySync } from '../hooks/useLibrarySync';
 import type { LibraryStackParamList } from '../navigation/types';
-import { useAppSelector } from '../store/hooks';
+import { createList, deleteList } from '../store/listsSlice';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<LibraryStackParamList, 'LibraryHome'>;
 
-// "Aimé" n'est pas un statut de lecture (voir LibraryEntry.liked) — indépendant,
-// un livre "à lire" peut très bien être aimé — donc un onglet à part plutôt
-// qu'une valeur de plus dans ReadingStatus.
-type TabValue = ReadingStatus | 'liked';
+// Ordre d'affichage fixe pour les 4 listes par défaut, comme avant le passage
+// aux listes de lecture génériques ; les listes perso suivent, dans leur
+// ordre de création (voir ReadingList.ts).
+const DEFAULT_ORDER = [DEFAULT_LIST_IDS.toRead, DEFAULT_LIST_IDS.reading, DEFAULT_LIST_IDS.read, DEFAULT_LIST_IDS.liked];
 
-const TABS: { value: TabValue; label: string }[] = [
-  { value: 'to_read', label: 'À lire' },
-  { value: 'reading', label: 'En cours' },
-  { value: 'read', label: 'Lu' },
-  { value: 'liked', label: 'Aimé' },
-];
-
-type SortMode = 'date' | 'rating';
-
-function matchesTab(entry: { status: ReadingStatus; liked?: boolean }, tab: TabValue): boolean {
-  return tab === 'liked' ? !!entry.liked : entry.status === tab;
-}
-
+/**
+ * Écran d'accueil de l'onglet Bibliothèque — style "Ta bibliothèque"
+ * Spotify : une colonne de lignes "playlist" (une par liste de lecture),
+ * chacune avec sa vignette, son nom et son nombre de livres, qui ouvre le
+ * contenu de la liste (`ListDetailScreen`) au tap. Remplace l'ancienne
+ * disposition à onglets horizontaux + grille inline, dont l'espacement ne
+ * se comportait pas bien à l'usage. Prépare aussi naturellement les listes
+ * personnalisées : en ajouter une, c'est simplement ajouter une ligne de
+ * plus ici, sans rien à adapter dans la mise en page.
+ */
 export default function LibraryScreen({ navigation }: Props) {
+  const dispatch = useAppDispatch();
   const entries = useAppSelector((state) => state.library.entries);
-  const [activeTab, setActiveTab] = useState<TabValue>('to_read');
-  const [sortMode, setSortMode] = useState<SortMode>('date');
+  const lists = useAppSelector((state) => state.lists.lists);
+  const [creating, setCreating] = useState(false);
+  const [newListName, setNewListName] = useState('');
 
-  const filtered = useMemo(() => {
-    const inTab = entries.filter((e) => matchesTab(e, activeTab));
-    return [...inTab].sort((a, b) => {
-      if (sortMode === 'rating') return (b.rating ?? 0) - (a.rating ?? 0);
-      return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
-    });
-  }, [entries, activeTab, sortMode]);
+  // Le serveur fait foi (voir le plan Firebase, doc Claude du projet) :
+  // push puis pull à chaque focus de cet écran, avec garde-fou anti-course.
+  // `ListDetailScreen` fait de même (voir `useLibrarySync`) puisqu'on peut
+  // tout aussi bien revenir directement là après un ajout/like.
+  useLibrarySync();
+
+  const orderedLists = useMemo(() => {
+    const defaults = DEFAULT_ORDER.map((id) => lists.find((l) => l.id === id)).filter((l): l is ReadingList => !!l);
+    const customs = [...lists.filter((l) => !l.isDefault)].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return [...defaults, ...customs];
+  }, [lists]);
+
+  const handleCreateList = () => {
+    const name = newListName.trim();
+    if (!name) {
+      setCreating(false);
+      return;
+    }
+    dispatch(createList(name));
+    setNewListName('');
+    setCreating(false);
+  };
+
+  const handleDeleteList = (listId: string, name: string) => {
+    Alert.alert(
+      'Supprimer cette liste ?',
+      `"${name}" sera supprimée. Les livres qu'elle contient resteront dans ta bibliothèque.`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer', style: 'destructive', onPress: () => dispatch(deleteList(listId)) },
+      ],
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabsRow}>
-        {TABS.map((tab) => {
-          const count = entries.filter((e) => matchesTab(e, tab.value)).length;
-          const active = tab.value === activeTab;
-          return (
-            <Pressable
-              key={tab.value}
-              style={[styles.tab, active && styles.tabActive]}
-              onPress={() => setActiveTab(tab.value)}
-            >
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
-                {tab.label} ({count})
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}>Mes listes</Text>
+        <Pressable style={styles.addButton} onPress={() => setCreating(true)} hitSlop={8}>
+          <Ionicons name="add" size={20} color={colors.primaryText} />
+        </Pressable>
       </View>
 
-      <Pressable style={styles.sortButton} onPress={() => setSortMode((m) => (m === 'date' ? 'rating' : 'date'))}>
-        <Ionicons name="swap-vertical" size={14} color={colors.secondaryText} />
-        <Text style={styles.sortButtonText}>Trié par {sortMode === 'date' ? "date d'ajout" : 'note'}</Text>
-      </Pressable>
+      {creating && (
+        <View style={styles.createRow}>
+          <TextInput
+            value={newListName}
+            onChangeText={setNewListName}
+            placeholder="Nom de la nouvelle liste"
+            placeholderTextColor={colors.placeholder}
+            style={styles.createInput}
+            autoFocus
+            onSubmitEditing={handleCreateList}
+          />
+          <Pressable style={styles.createConfirm} onPress={handleCreateList}>
+            <Ionicons name="checkmark" size={18} color={colors.background} />
+          </Pressable>
+          <Pressable
+            style={styles.createCancel}
+            onPress={() => {
+              setCreating(false);
+              setNewListName('');
+            }}
+          >
+            <Ionicons name="close" size={18} color={colors.secondaryText} />
+          </Pressable>
+        </View>
+      )}
 
       <FlatList
-        data={filtered}
+        data={orderedLists}
         keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>Rien ici pour l'instant.</Text>}
-        renderItem={({ item }) => (
-          <BookCard
-            title={item.title}
-            authors={item.authors}
-            coverUrl={item.coverUrl ?? bookRepository.coverUrl(item.coverId, 'M')}
-            onPress={() =>
-              navigation.navigate('BookDetail', {
-                workKey: item.id,
-                presetWorkKeys: item.workKeys,
-                presetTitle: item.title,
-                presetAuthors: item.authors,
-                presetCoverId: item.coverId,
-                presetCoverUrl: item.coverUrl,
-                presetDescription: item.description,
-                presetLanguages: item.languages,
-              })
-            }
-          />
-        )}
+        contentContainerStyle={styles.listRows}
+        renderItem={({ item }) => {
+          const inList = entries.filter((e) => e.listIds.includes(item.id));
+          const mostRecent = [...inList].sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())[0];
+          const coverUrl = mostRecent ? mostRecent.coverUrl ?? bookRepository.coverUrl(mostRecent.coverId, 'S') : undefined;
+
+          return (
+            <ListPlaylistRow
+              name={item.name}
+              count={inList.length}
+              listId={item.id}
+              isDefault={item.isDefault}
+              coverUrl={coverUrl}
+              onPress={() => navigation.navigate('ListDetail', { listId: item.id, listName: item.name, isDefault: item.isDefault })}
+              onDelete={item.isDefault ? undefined : () => handleDeleteList(item.id, item.name)}
+            />
+          );
+        }}
       />
     </View>
   );
@@ -105,48 +137,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
   },
-  tabsRow: {
+  headerRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  headerTitle: {
+    ...typography.title,
+  },
+  addButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  createInput: {
+    flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.pill,
-    padding: 4,
-    marginBottom: spacing.md,
-  },
-  tab: {
-    flex: 1,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    alignItems: 'center',
+    color: colors.primaryText,
+    marginRight: spacing.xs,
   },
-  tabActive: {
+  createConfirm: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.accentOrange,
-  },
-  tabLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.secondaryText,
-  },
-  tabLabelActive: {
-    color: colors.background,
-  },
-  sortButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginBottom: spacing.md,
+    justifyContent: 'center',
+    marginRight: spacing.xs,
   },
-  sortButtonText: {
-    ...typography.body,
-    marginLeft: spacing.xs,
+  createCancel: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  list: {
+  listRows: {
     paddingBottom: spacing.xl,
-  },
-  row: {
-    justifyContent: 'space-between',
-  },
-  empty: {
-    ...typography.body,
-    marginTop: spacing.xl,
   },
 });

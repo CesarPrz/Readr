@@ -1,9 +1,21 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { authRepository, googleIdentityProvider } from '../composition/repositories';
+import {
+  authRepository,
+  googleIdentityProvider,
+  libraryRepository,
+  librarySyncRepository,
+  listRepository,
+  listSyncRepository,
+} from '../composition/repositories';
 import type { UserProfile } from '../domain/entities/UserProfile';
 import { ensureSignedIn as ensureSignedInUseCase } from '../domain/usecases/ensureSignedIn';
-import { linkGoogleAccount as linkGoogleAccountUseCase } from '../domain/usecases/linkGoogleAccount';
+import {
+  linkGoogleAccount as linkGoogleAccountUseCase,
+  type LinkGoogleAccountResult,
+} from '../domain/usecases/linkGoogleAccount';
 import { signOutUser as signOutUserUseCase } from '../domain/usecases/signOutUser';
+import { setLibraryEntries } from './librarySlice';
+import { setLists } from './listsSlice';
 
 type AuthState = {
   user: UserProfile | null;
@@ -29,10 +41,33 @@ const initialState: AuthState = {
 export const ensureSignedIn = createAsyncThunk('auth/ensureSignedIn', () => ensureSignedInUseCase(authRepository));
 
 // Déclenché uniquement par le bouton "Se connecter avec Google" de l'écran
-// Profil (Phase 3) — jamais automatiquement. `null` en résultat = annulé par
-// l'utilisateur (pas une erreur, voir `linkGoogleAccount` usecase).
-export const linkGoogleAccount = createAsyncThunk('auth/linkGoogleAccount', () =>
-  linkGoogleAccountUseCase(googleIdentityProvider, authRepository),
+// Profil (Phase 3) — jamais automatiquement. `status: 'cancelled'` = annulé
+// par l'utilisateur (pas une erreur), voir le usecase `linkGoogleAccount`
+// pour le détail des 3 résultats possibles. Si `status: 'switched'` (compte
+// déjà utilisé par un autre profil Readr, bascule automatique vers ce
+// compte existant + restauration depuis Firestore), on répercute les
+// données restaurées dans les slices `library`/`lists` via des actions
+// simples — même pattern que `listsSlice.deleteList` → `setLibraryEntries`
+// (CLAUDE.md, règle 7, exceptions documentées).
+export const linkGoogleAccount = createAsyncThunk<LinkGoogleAccountResult, void>(
+  'auth/linkGoogleAccount',
+  async (_arg, { dispatch }) => {
+    console.log('[Readr][debug bascule] authSlice.linkGoogleAccount: thunk démarré');
+    const result = await linkGoogleAccountUseCase(
+      googleIdentityProvider,
+      authRepository,
+      libraryRepository,
+      listRepository,
+      librarySyncRepository,
+      listSyncRepository,
+    );
+    console.log('[Readr][debug bascule] authSlice.linkGoogleAccount: usecase résolu, status =', result.status);
+    if (result.status === 'switched') {
+      dispatch(setLibraryEntries(result.entries));
+      dispatch(setLists(result.lists));
+    }
+    return result;
+  },
 );
 
 export const signOutUser = createAsyncThunk('auth/signOut', () =>
@@ -61,20 +96,23 @@ const authSlice = createSlice({
       })
       .addCase(linkGoogleAccount.fulfilled, (state, action) => {
         state.googleLinkStatus = 'idle';
-        // `action.payload` est `null` quand l'utilisateur a annulé le flux
-        // Google — on ne touche alors pas à `user`, il reste anonyme.
-        if (action.payload) state.user = action.payload;
+        // `cancelled` : l'utilisateur a annulé le flux Google — on ne touche
+        // pas à `user`, il reste anonyme. `linked`/`switched` portent tous
+        // deux un `profile` à jour (même uid, ou celui du compte existant
+        // retrouvé) ; les données restaurées pour `switched` sont déjà
+        // appliquées aux autres slices par le thunk lui-même.
+        if (action.payload.status !== 'cancelled') {
+          state.user = action.payload.profile;
+        }
       })
       .addCase(linkGoogleAccount.rejected, (state, action) => {
         state.googleLinkStatus = 'error';
-        // `CredentialAlreadyInUseError` (voir AuthRepository) porte déjà un
-        // message clair, présentable tel quel à l'utilisateur — les autres
-        // erreurs (réseau, config manquante...) restent génériques pour ne
-        // rien afficher de technique.
-        state.googleLinkError =
-          action.error.name === 'CredentialAlreadyInUseError'
-            ? (action.error.message ?? null)
-            : 'La connexion avec Google a échoué. Réessaie plus tard.';
+        // Le cas "compte déjà utilisé" ne lève plus d'erreur depuis "Bascule
+        // vers un compte existant" (voir AuthRepository.linkWithGoogle) : il
+        // bascule automatiquement vers ce compte. Les erreurs restantes ici
+        // sont donc génériques (réseau, config manquante...), jamais un
+        // message technique.
+        state.googleLinkError = 'La connexion avec Google a échoué. Réessaie plus tard.';
       })
       .addCase(signOutUser.fulfilled, (state) => {
         state.user = null;

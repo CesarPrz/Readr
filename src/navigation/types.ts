@@ -36,8 +36,16 @@ export type DiscoverStackParamList = {
   BookDetail: BookDetailParams;
 };
 
+/** Contenu d'une liste de lecture (style "playlist"), ouvert depuis la ligne correspondante sur `LibraryScreen`. */
+export type ListDetailParams = {
+  listId: string;
+  listName: string; // affiché immédiatement comme titre d'écran, avant tout re-rendu depuis le store
+  isDefault: boolean; // conditionne l'affichage du bouton de suppression dans l'en-tête
+};
+
 export type LibraryStackParamList = {
   LibraryHome: undefined;
+  ListDetail: ListDetailParams;
   BookDetail: BookDetailParams;
 };
 

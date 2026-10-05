@@ -1,17 +1,21 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { ReadingStatus } from '../domain/entities/LibraryEntry';
+import { DEFAULT_LIST_IDS } from '../domain/entities/ReadingList';
 import { colors, radius, spacing } from '../theme/theme';
 
-const OPTIONS: { value: ReadingStatus; label: string }[] = [
-  { value: 'to_read', label: 'À lire' },
-  { value: 'reading', label: 'En cours' },
-  { value: 'read', label: 'Lu' },
+// Les 3 listes de statut restent affichées comme un segmented control fixe
+// (comportement inchangé depuis avant les listes de lecture génériques),
+// même si `value`/`onChange` manipulent désormais un id de liste générique
+// plutôt qu'un `ReadingStatus` dédié — voir ReadingList.ts.
+const OPTIONS: { value: string; label: string }[] = [
+  { value: DEFAULT_LIST_IDS.toRead, label: 'À lire' },
+  { value: DEFAULT_LIST_IDS.reading, label: 'En cours' },
+  { value: DEFAULT_LIST_IDS.read, label: 'Lu' },
 ];
 
 type Props = {
-  value: ReadingStatus;
-  onChange: (status: ReadingStatus) => void;
+  value: string;
+  onChange: (listId: string) => void;
 };
 
 export default function StatusSegmented({ value, onChange }: Props) {

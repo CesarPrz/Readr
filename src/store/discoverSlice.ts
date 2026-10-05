@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { bookRepository } from '../composition/repositories';
+import { bookRepository, bookStatsRepository } from '../composition/repositories';
 import type { RecommendationGroup } from '../domain/entities/RecommendationGroup';
 import { getRecommendations } from '../domain/usecases/getRecommendations';
 import type { RootState } from './store';
@@ -13,7 +13,7 @@ const initialState: DiscoverState = { groups: [], status: 'idle' };
 
 export const fetchRecommendations = createAsyncThunk('discover/fetch', (_: void, { getState }) => {
   const { entries } = (getState() as RootState).library;
-  return getRecommendations(bookRepository, entries);
+  return getRecommendations(bookRepository, bookStatsRepository, entries);
 });
 
 const discoverSlice = createSlice({

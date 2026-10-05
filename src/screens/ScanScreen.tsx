@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import { Image } from 'expo-image';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { bookRepository } from '../composition/repositories';
-import type { ReadingStatus } from '../domain/entities/LibraryEntry';
+import { DEFAULT_LIST_IDS } from '../domain/entities/ReadingList';
 import type { ScanStackParamList } from '../navigation/types';
 import { addBook } from '../store/librarySlice';
 import { lookupIsbn, resetScan } from '../store/scanSlice';
@@ -32,9 +32,9 @@ export default function ScanScreen({ navigation }: Props) {
   );
 
   const handleAdd = useCallback(
-    (readingStatus: ReadingStatus) => {
+    (listId: string) => {
       if (!result) return;
-      dispatch(addBook({ book: result, status: readingStatus }));
+      dispatch(addBook({ book: result, listId }));
       setJustAdded(true);
       setTimeout(() => {
         setJustAdded(false);
@@ -85,7 +85,7 @@ export default function ScanScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <CameraView
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ['ean13'] }}
         onBarcodeScanned={status === 'idle' ? handleBarcodeScanned : undefined}
@@ -155,10 +155,10 @@ export default function ScanScreen({ navigation }: Props) {
             <Text style={[styles.message, styles.centeredMessage]}>Déjà dans ta bibliothèque.</Text>
           ) : (
             <View style={styles.actionsRow}>
-              <Pressable style={styles.actionButton} onPress={() => handleAdd('to_read')}>
+              <Pressable style={styles.actionButton} onPress={() => handleAdd(DEFAULT_LIST_IDS.toRead)}>
                 <Text style={styles.actionButtonText}>À lire</Text>
               </Pressable>
-              <Pressable style={styles.actionButton} onPress={() => handleAdd('read')}>
+              <Pressable style={styles.actionButton} onPress={() => handleAdd(DEFAULT_LIST_IDS.read)}>
                 <Text style={styles.actionButtonText}>Lu</Text>
               </Pressable>
             </View>
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   frameOverlay: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFill, // Garder en absoluteFill, absoluteFillObject n'existe pas
     alignItems: 'center',
     justifyContent: 'center',
   },

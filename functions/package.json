@@ -1,0 +1,23 @@
+{
+  "name": "functions",
+  "private": true,
+  "description": "Cloud Functions de Readr — recalcul planifié des statistiques de recommandation collaborative (voir ../README.md, section \"Recommandations collaboratives\", pour la marche à suivre complète : installation, login, Blaze, déploiement).",
+  "engines": {
+    "node": "20"
+  },
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "npm run build && firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.2"
+  }
+}

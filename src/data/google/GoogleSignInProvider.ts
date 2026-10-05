@@ -62,11 +62,15 @@ export class GoogleSignInProvider implements GoogleIdentityProvider {
       // la lib juste avant `signIn()` sur Android, pour un message d'erreur
       // clair si Google Play Services est absent/obsolète plutôt qu'un échec
       // silencieux du flux de connexion.
+      console.log('[Readr][debug bascule] GoogleSignInProvider: hasPlayServices...');
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      console.log('[Readr][debug bascule] GoogleSignInProvider: GoogleSignin.signIn()...');
       const response = await GoogleSignin.signIn();
+      console.log('[Readr][debug bascule] GoogleSignInProvider: signIn() a répondu, success =', isSuccessResponse(response));
       if (!isSuccessResponse(response)) return null; // annulé par l'utilisateur, pas une erreur
 
       const { idToken } = response.data;
+      console.log('[Readr][debug bascule] GoogleSignInProvider: idToken', idToken ? 'présent' : 'ABSENT');
       if (!idToken) {
         // Arrive si `webClientId` est absent/mal configuré : Google renvoie
         // alors une connexion réussie mais sans idToken exploitable.

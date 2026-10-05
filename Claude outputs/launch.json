@@ -1,0 +1,59 @@
+{
+  // Raccourcis de lancement pour Readr — pas de vrai débogueur JS ici
+  // (pas besoin d'extension type "React Native Tools"). Chaque entrée
+  // ouvre un terminal intégré et lance la commande correspondante, comme
+  // si tu la tapais toi-même — type "node-terminal", intégré à VS Code
+  // depuis longtemps, aucune extension à installer.
+  //
+  // Vocabulaire du projet (voir CLAUDE.md/README.md) :
+  // - "Expo Go" (start*) couvre tout le dev courant (Phases 1, 2, 4+).
+  // - "dev client" (devclient:*) est nécessaire UNIQUEMENT pour tester la
+  //   connexion Google (Phase 3) — ça construit et installe un vrai build
+  //   natif Android/iOS, bien plus lent qu'un simple `expo start`.
+  // - "dev"/"prod" choisissent le projet Firebase (voir scripts/use-env.js).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node-terminal",
+      "name": "Expo: démarrer (env dev)",
+      "request": "launch",
+      "command": "npm run start:dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Expo: démarrer (env prod)",
+      "request": "launch",
+      "command": "npm run start:prod",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Expo: démarrer (.env déjà en place)",
+      "request": "launch",
+      "command": "npm start",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Dev client Android (env dev) — pour tester Google Sign-In",
+      "request": "launch",
+      "command": "npm run devclient:android:dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Dev client Android (env prod) — pour tester Google Sign-In",
+      "request": "launch",
+      "command": "npm run devclient:android:prod",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Dev client iOS (env dev) — nécessite un Mac",
+      "request": "launch",
+      "command": "npm run devclient:ios:dev",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

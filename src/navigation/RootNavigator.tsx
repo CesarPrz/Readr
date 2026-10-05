@@ -8,6 +8,7 @@ import LanguageResultsScreen from '../screens/LanguageResultsScreen';
 import ScanScreen from '../screens/ScanScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LibraryScreen from '../screens/LibraryScreen';
+import ListDetailScreen from '../screens/ListDetailScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
 import ProfilScreen from '../screens/ProfilScreen';
 import { languageLabel } from '../utils/languageLabels';
@@ -70,6 +71,14 @@ function LibraryStackNavigator() {
   return (
     <LibraryStack.Navigator screenOptions={stackScreenOptions}>
       <LibraryStack.Screen name="LibraryHome" component={LibraryScreen} options={{ title: 'Ma bibliothèque' }} />
+      <LibraryStack.Screen
+        name="ListDetail"
+        component={ListDetailScreen}
+        // Titre de repli avant que `ListDetailScreen` n'affine l'en-tête via
+        // `navigation.setOptions` (nom de la liste + bouton de suppression
+        // pour une liste perso) — évite un flash de titre vide à l'ouverture.
+        options={({ route }) => ({ title: route.params.listName })}
+      />
       <LibraryStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
     </LibraryStack.Navigator>
   );
