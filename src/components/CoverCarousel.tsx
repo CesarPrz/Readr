@@ -38,7 +38,7 @@ export default function CoverCarousel({ coverUrls }: Props) {
   return (
     <View>
       {/* `frame` a une taille fixe et `overflow: hidden` : la FlatList est posée en
-          position absolue dedans (`StyleSheet.absoluteFillObject`), donc elle ne
+          position absolue dedans (`StyleSheet.absoluteFill`), donc elle ne
           peut physiquement pas dépasser cette taille — même si son propre calcul de
           hauteur de contenu se trompe (ce qui arrivait avant : un simple `height`
           sur le style de la FlatList ne suffisait pas à empêcher un grand espace
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   list: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   cover: {
     width: COVER_WIDTH,

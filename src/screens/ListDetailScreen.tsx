@@ -8,7 +8,7 @@ import { useLibrarySync } from '../hooks/useLibrarySync';
 import type { LibraryStackParamList } from '../navigation/types';
 import { deleteList } from '../store/listsSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { colors, spacing, typography } from '../theme/theme';
+import { colors, radius, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<LibraryStackParamList, 'ListDetail'>;
 
@@ -77,6 +77,15 @@ export default function ListDetailScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {/* "Scanner dans Recherche et listes" (08/10/2026) : le livre scanné s'ajoute directement à CETTE liste. */}
+      <Pressable
+        style={({ pressed }) => [styles.scanButton, pressed && styles.scanButtonPressed]}
+        onPress={() => navigation.navigate('Scan', { listId, listName })}
+      >
+        <Ionicons name="barcode-outline" size={20} color={colors.background} />
+        <Text style={styles.scanButtonText}>Scanner un livre</Text>
+      </Pressable>
+
       <Pressable style={styles.sortButton} onPress={() => setSortMode((m) => (m === 'date' ? 'rating' : 'date'))}>
         <Ionicons name="swap-vertical" size={14} color={colors.secondaryText} />
         <Text style={styles.sortButtonText}>Trié par {sortMode === 'date' ? "date d'ajout" : 'note'}</Text>
@@ -117,6 +126,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentOrange,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm + 2,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+  },
+  scanButtonPressed: {
+    opacity: 0.8,
+  },
+  scanButtonText: {
+    color: colors.background,
+    fontWeight: '700',
+    marginLeft: spacing.sm,
   },
   sortButton: {
     flexDirection: 'row',

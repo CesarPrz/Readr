@@ -150,6 +150,10 @@ export default function SearchScreen({ navigation }: Props) {
               autoCorrect={false}
               returnKeyType="search"
             />
+            {/* "Scanner dans Recherche et listes" (08/10/2026) : accès discret au scan de code-barres, à la place de l'ancien onglet Scanner. */}
+            <Pressable onPress={() => navigation.navigate('Scan')} hitSlop={10} accessibilityLabel="Scanner un code-barres">
+              <Ionicons name="barcode-outline" size={22} color={colors.secondaryText} />
+            </Pressable>
           </View>
 
           {status === 'error' && (

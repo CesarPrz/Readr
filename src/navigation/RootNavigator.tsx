@@ -19,13 +19,11 @@ import type {
   FeedStackParamList,
   LibraryStackParamList,
   RootTabParamList,
-  ScanStackParamList,
   SearchStackParamList,
 } from './types';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const SearchStack = createNativeStackNavigator<SearchStackParamList>();
-const ScanStack = createNativeStackNavigator<ScanStackParamList>();
 const DiscoverStack = createNativeStackNavigator<DiscoverStackParamList>();
 const FeedStack = createNativeStackNavigator<FeedStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
@@ -47,19 +45,12 @@ function SearchStackNavigator() {
         options={({ route }) => ({ title: languageLabel(route.params.language) })}
       />
       <SearchStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
+      {/* "Scanner dans Recherche et listes" (08/10/2026) : remplace l'ancien onglet Scanner. */}
+      <SearchStack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scanner un livre' }} />
       {/* "Recherche d'utilisateurs" (08/10/2026) : profil public d'un autre utilisateur, puis ses listes en lecture seule. */}
       <SearchStack.Screen name="UserProfile" component={UserProfileScreen} options={({ route }) => ({ title: route.params.username })} />
       <SearchStack.Screen name="UserList" component={UserListScreen} options={({ route }) => ({ title: route.params.listName })} />
     </SearchStack.Navigator>
-  );
-}
-
-function ScanStackNavigator() {
-  return (
-    <ScanStack.Navigator screenOptions={stackScreenOptions}>
-      <ScanStack.Screen name="ScanHome" component={ScanScreen} options={{ title: 'Scanner' }} />
-      <ScanStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
-    </ScanStack.Navigator>
   );
 }
 
@@ -103,6 +94,7 @@ function LibraryStackNavigator() {
         options={({ route }) => ({ title: route.params.listName })}
       />
       <LibraryStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
+      <LibraryStack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scanner un livre' }} />
     </LibraryStack.Navigator>
   );
 }
@@ -125,13 +117,6 @@ export default function RootNavigator() {
         component={SearchStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
-        name="Scanner"
-        component={ScanStackNavigator}
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="barcode-outline" color={color} size={size} />,
         }}
       />
       <Tab.Screen

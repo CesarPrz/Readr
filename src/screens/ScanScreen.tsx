@@ -1,26 +1,51 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { Image } from 'expo-image';
+import { useIsFocused } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { bookRepository } from '../composition/repositories';
 import { DEFAULT_LIST_IDS } from '../domain/entities/ReadingList';
-import type { ScanStackParamList } from '../navigation/types';
-import { addBook } from '../store/librarySlice';
+import type { ScannableStackParamList } from '../navigation/types';
+import { addBook, toggleBookList } from '../store/librarySlice';
 import { lookupIsbn, resetScan } from '../store/scanSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
-type Props = NativeStackScreenProps<ScanStackParamList, 'ScanHome'>;
+type Props = NativeStackScreenProps<ScannableStackParamList, 'Scan'>;
 
-export default function ScanScreen({ navigation }: Props) {
+/**
+ * Scan d'un code-barres EAN-13 → recherche du livre → ajout à la
+ * bibliothèque. Écran de pile (plus un onglet depuis "Scanner dans Recherche
+ * et listes", 08/10/2026), ouvert de deux façons :
+ * - depuis la Recherche (icône discrète) : sans paramètre, le livre trouvé
+ *   s'ajoute à "À lire" ou "Lu" au choix ;
+ * - depuis une liste (bouton "Scanner un livre") : `listId`/`listName` en
+ *   paramètres, le livre s'ajoute directement à CETTE liste — un seul bouton,
+ *   et on peut enchaîner les scans pour remplir une liste d'un coup.
+ */
+
+export default function ScanScreen({ navigation, route }: Props) {
   const dispatch = useAppDispatch();
+  const { listId, listName } = route.params ?? {};
+  // La caméra n'est montée que tant que l'écran est au premier plan : empilé sous la fiche livre, il ne doit pas la garder allumée.
+  const isFocused = useIsFocused();
   const [permission, requestPermission] = useCameraPermissions();
   const { status, result } = useAppSelector((state) => state.scan);
-  const alreadyInLibrary = useAppSelector((state) =>
-    result ? state.library.entries.some((e) => e.id === result.id) : false,
+  const existingEntry = useAppSelector((state) =>
+    result ? state.library.entries.find((e) => e.id === result.id) : undefined,
   );
+  // Sans liste cible : "déjà là" dès que le livre est dans la bibliothèque. Avec une liste cible : seulement s'il est déjà dans CETTE liste.
+  const alreadyInLibrary = listId ? !!existingEntry?.listIds.includes(listId) : !!existingEntry;
   const [justAdded, setJustAdded] = useState(false);
+
+  // Un résultat de scan laissé par une visite précédente ne doit jamais réapparaître à l'ouverture, ni survivre à la fermeture.
+  useEffect(() => {
+    dispatch(resetScan());
+    return () => {
+      dispatch(resetScan());
+    };
+  }, [dispatch]);
 
   const handleBarcodeScanned = useCallback(
     ({ data }: BarcodeScanningResult) => {
@@ -34,14 +59,16 @@ export default function ScanScreen({ navigation }: Props) {
   const handleAdd = useCallback(
     (listId: string) => {
       if (!result) return;
-      dispatch(addBook({ book: result, listId }));
+      // `addBook` ne fait rien si le livre est déjà en bibliothèque : dans ce cas (liste cible), on l'ajoute à la liste par un toggle.
+      if (existingEntry) dispatch(toggleBookList({ bookId: result.id, listId, add: true }));
+      else dispatch(addBook({ book: result, listId }));
       setJustAdded(true);
       setTimeout(() => {
         setJustAdded(false);
         dispatch(resetScan());
       }, 1200);
     },
-    [dispatch, result],
+    [dispatch, result, existingEntry],
   );
 
   const openDetail = useCallback(() => {
@@ -70,8 +97,7 @@ export default function ScanScreen({ navigation }: Props) {
   if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.hero}>Scanner</Text>
-        <Text style={styles.message}>
+        <Text style={[styles.message, styles.permissionMessage]}>
           Autorise l'accès à l'appareil photo pour scanner le code-barres d'un livre et l'ajouter directement à ta
           bibliothèque.
         </Text>
@@ -84,12 +110,14 @@ export default function ScanScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <CameraView
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ['ean13'] }}
-        onBarcodeScanned={status === 'idle' ? handleBarcodeScanned : undefined}
-      />
+      {isFocused && (
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ['ean13'] }}
+          onBarcodeScanned={status === 'idle' ? handleBarcodeScanned : undefined}
+        />
+      )}
 
       <View style={styles.frameOverlay} pointerEvents="none">
         <View style={styles.frame} />
@@ -150,9 +178,17 @@ export default function ScanScreen({ navigation }: Props) {
           </View>
 
           {justAdded ? (
-            <Text style={[styles.message, styles.centeredMessage]}>Ajouté à ta bibliothèque ✓</Text>
+            <Text style={[styles.message, styles.centeredMessage]}>
+              {listId ? `Ajouté à « ${listName ?? 'cette liste'} » ✓` : 'Ajouté à ta bibliothèque ✓'}
+            </Text>
           ) : alreadyInLibrary ? (
-            <Text style={[styles.message, styles.centeredMessage]}>Déjà dans ta bibliothèque.</Text>
+            <Text style={[styles.message, styles.centeredMessage]}>
+              {listId ? 'Déjà dans cette liste.' : 'Déjà dans ta bibliothèque.'}
+            </Text>
+          ) : listId ? (
+            <Pressable style={[styles.addButton, styles.cardAddButton]} onPress={() => handleAdd(listId)}>
+              <Text style={styles.addButtonText}>Ajouter à « {listName ?? 'cette liste'} »</Text>
+            </Pressable>
           ) : (
             <View style={styles.actionsRow}>
               <Pressable style={styles.actionButton} onPress={() => handleAdd(DEFAULT_LIST_IDS.toRead)}>
@@ -181,8 +217,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  hero: {
-    ...typography.hero,
+  permissionMessage: {
     marginTop: spacing.lg,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.lg,
@@ -205,12 +240,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
     marginHorizontal: spacing.lg,
   },
+  cardAddButton: {
+    marginHorizontal: 0,
+  },
   addButtonText: {
     color: colors.background,
     fontWeight: '700',
   },
   frameOverlay: {
-    ...StyleSheet.absoluteFill, // Garder en absoluteFill, absoluteFillObject n'existe pas
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

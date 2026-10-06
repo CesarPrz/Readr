@@ -12,7 +12,6 @@ import type {
   DiscoverStackParamList,
   FeedStackParamList,
   LibraryStackParamList,
-  ScanStackParamList,
   SearchStackParamList,
 } from '../navigation/types';
 import { fetchBookDetail } from '../store/bookDetailSlice';
@@ -22,7 +21,7 @@ import { colors, radius, spacing, typography } from '../theme/theme';
 import { languageLabel } from '../utils/languageLabels';
 
 type Props = NativeStackScreenProps<
-  SearchStackParamList | DiscoverStackParamList | ScanStackParamList | LibraryStackParamList | FeedStackParamList,
+  SearchStackParamList | DiscoverStackParamList | LibraryStackParamList | FeedStackParamList,
   'BookDetail'
 >;
 

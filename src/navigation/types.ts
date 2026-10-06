@@ -47,20 +47,35 @@ export type PublicProfileStackParamList = {
   BookDetail: BookDetailParams;
 };
 
+/**
+ * Écran de scan de code-barres ("Scanner dans Recherche et listes",
+ * 08/10/2026) : l'ancien onglet Scanner a disparu, `ScanScreen` est
+ * désormais un écran de pile ouvert depuis la Recherche (icône discrète) ou
+ * depuis une liste (bouton "Scanner un livre"). Sans paramètre, le livre
+ * trouvé s'ajoute à "À lire" ou "Lu" au choix ; avec `listId`, il s'ajoute
+ * directement à CETTE liste.
+ */
+export type ScanParams = {
+  listId?: string;
+  listName?: string; // affiché dans le libellé du bouton d'ajout
+};
+
+/** Écrans dont a besoin `ScanScreen` — enregistrés dans toute pile qui peut l'ouvrir. */
+export type ScannableStackParamList = {
+  Scan: ScanParams | undefined;
+  BookDetail: BookDetailParams;
+};
+
 export type SearchStackParamList = {
   SearchHome: undefined;
   LanguageResults: LanguageResultsParams;
-} & PublicProfileStackParamList;
+} & PublicProfileStackParamList &
+  ScannableStackParamList;
 
 /** "Fil d'amis" (08/10/2026) : l'écran du fil, plus les écrans partagés pour ouvrir un livre ou le profil d'un lecteur depuis une ligne. */
 export type FeedStackParamList = {
   FeedHome: undefined;
 } & PublicProfileStackParamList;
-
-export type ScanStackParamList = {
-  ScanHome: undefined;
-  BookDetail: BookDetailParams;
-};
 
 export type DiscoverStackParamList = {
   DiscoverHome: undefined;
@@ -78,6 +93,7 @@ export type LibraryStackParamList = {
   LibraryHome: undefined;
   ListDetail: ListDetailParams;
   BookDetail: BookDetailParams;
+  Scan: ScanParams | undefined;
 };
 
 // L'onglet Profil dédié (Phase 3 du plan Firebase) et son
@@ -88,7 +104,6 @@ export type LibraryStackParamList = {
 
 export type RootTabParamList = {
   Recherche: NavigatorScreenParams<SearchStackParamList>;
-  Scanner: NavigatorScreenParams<ScanStackParamList>;
   Découvrir: NavigatorScreenParams<DiscoverStackParamList>;
   Fil: NavigatorScreenParams<FeedStackParamList>;
   'Ma bibliothèque': NavigatorScreenParams<LibraryStackParamList>;
