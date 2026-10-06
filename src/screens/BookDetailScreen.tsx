@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CoverCarousel from '../components/CoverCarousel';
+import FriendOpinionsSection from '../components/FriendOpinionsSection';
 import RatingStars from '../components/RatingStars';
 import StatusSegmented from '../components/StatusSegmented';
 import { bookRepository } from '../composition/repositories';
@@ -15,6 +16,7 @@ import type {
   SearchStackParamList,
 } from '../navigation/types';
 import { fetchBookDetail } from '../store/bookDetailSlice';
+import { loadFriendOpinions } from '../store/friendOpinionsSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addBook, patchLibraryEntry, removeBook, toggleBookList } from '../store/librarySlice';
 import { colors, radius, spacing, typography } from '../theme/theme';
@@ -41,6 +43,9 @@ export default function BookDetailScreen({ route }: Props) {
   const customLists = useAppSelector((state) => state.lists.lists.filter((l) => !l.isDefault));
   const { detail, status: detailStatus, currentId } = useAppSelector((state) => state.bookDetail);
   const [noteDraft, setNoteDraft] = useState('');
+  // "Tes abonnements" (08/10/2026) : avis des lecteurs suivis sur CE livre. `followingCount` en dépendance de l'effet plus bas : le graphe d'abonnements se charge au démarrage, il peut arriver après l'ouverture de la fiche.
+  const followingCount = useAppSelector((state) => state.social.followingIds.length);
+  const friendOpinions = useAppSelector((state) => state.friendOpinions.byBook[workKey]);
 
   const inLibrary = !!entry;
   const isCurrent = currentId === workKey;
@@ -49,6 +54,11 @@ export default function BookDetailScreen({ route }: Props) {
   useEffect(() => {
     dispatch(fetchBookDetail(presetWorkKeys));
   }, [presetWorkKeys, dispatch]);
+
+  useEffect(() => {
+    if (followingCount === 0) return;
+    dispatch(loadFriendOpinions({ workKey, workKeys: Array.from(new Set([workKey, ...presetWorkKeys])) }));
+  }, [dispatch, workKey, presetWorkKeys, followingCount]);
 
   useEffect(() => {
     setNoteDraft(entry?.note ?? '');
@@ -230,6 +240,10 @@ export default function BookDetailScreen({ route }: Props) {
             </Text>
           )}
         </View>
+      )}
+
+      {followingCount > 0 && (
+        <FriendOpinionsSection opinions={friendOpinions?.items ?? []} loading={friendOpinions?.status === 'loading'} />
       )}
 
       {!loading && (

@@ -2,15 +2,19 @@ import type { Book } from '../entities/Book';
 import type { LibraryEntry } from '../entities/LibraryEntry';
 import { DEFAULT_LIST_IDS } from '../entities/ReadingList';
 import type { RecommendationGroup } from '../entities/RecommendationGroup';
+import type { ActivityFeedRepository } from '../repositories/ActivityFeedRepository';
 import type { BookRepository } from '../repositories/BookRepository';
 import type { BookStatsRepository } from '../repositories/BookStatsRepository';
 import { matchKnownGenre, type GenreMatch } from '../../utils/genreLabels';
+import { MAX_FOLLOWED_QUERIED } from './getFriendFeed';
 
 const MAX_AUTHOR_GROUPS_PER_REASON = 2;
 const MAX_COLLAB_GROUPS = 2; // limite de groupes "les lecteurs qui ont aimé/lu X ont aussi..." générés
 const MAX_COLLAB_CANDIDATES = 5; // livres essayés (aimés puis lus, les plus récents d'abord) avant d'abandonner — borne le nombre de lectures Firestore
 const MAX_BOOKS_PER_GROUP = 10;
 const MAX_TITLES_IN_LABEL = 2;
+const FRIEND_ENTRIES_PER_USER = 15; // entrées récentes lues chez chaque lecteur suivi
+const FRIEND_LIKE_MIN_RATING = 4; // note à partir de laquelle un livre noté compte comme "coup de cœur"
 const MAX_GENRE_CANDIDATES = 2; // livres essayés pour trouver un genre — pas toute la bibliothèque, pour borner le coût réseau
 
 /**
@@ -31,19 +35,34 @@ const MAX_GENRE_CANDIDATES = 2; // livres essayés pour trouver un genre — pas
  * à mesure) ; un même auteur non plus pour les groupes par auteur (le
  * premier groupe qui le couvre — lu avant aimé — l'emporte).
  */
+/** Lecteurs suivis par l'utilisateur, pour le groupe "coups de cœur de tes abonnements" — absent tant qu'on ne suit personne. */
+export type FriendRecommendationSource = {
+  activityRepo: ActivityFeedRepository;
+  followingIds: string[];
+};
+
 export async function getRecommendations(
   repo: BookRepository,
   bookStatsRepo: BookStatsRepository,
   libraryEntries: LibraryEntry[],
+  friends?: FriendRecommendationSource,
 ): Promise<RecommendationGroup[]> {
-  if (libraryEntries.length === 0) return [];
-
   // Grossit au fil des groupes générés : au départ seulement les livres déjà
   // possédés, puis chaque livre recommandé par un groupe rejoint l'ensemble
   // pour qu'un groupe suivant ne le reproduise pas.
   const excludedIds = new Set(libraryEntries.map((e) => e.id));
   const coveredAuthors = new Set<string>();
   const groups: RecommendationGroup[] = [];
+
+  // Les abonnements passent en PREMIER (signal le plus personnel) et même
+  // avec une bibliothèque vide : c'est justement le bon contenu pour un
+  // nouveau compte qui suit déjà quelqu'un mais n'a encore rien ajouté.
+  if (friends) {
+    const friendGroup = await friendRecommendationGroup(friends, excludedIds);
+    if (friendGroup) groups.push(friendGroup);
+  }
+
+  if (libraryEntries.length === 0) return groups;
 
   groups.push(...(await collaborativeRecommendationGroups(bookStatsRepo, libraryEntries, excludedIds)));
 
@@ -71,6 +90,77 @@ export async function getRecommendations(
   if (genreGroup) groups.push(genreGroup);
 
   return groups;
+}
+
+/**
+ * Groupe "Les coups de cœur de tes abonnements" ("Les abonnements sur la
+ * fiche livre", 08/10/2026, plan Firebase — Phase 7 "Recommandations
+ * sociales", moitié "amis") : les livres que les lecteurs suivis ont AIMÉS
+ * (liste "Aimés" ou note d'au moins 4) parmi leurs entrées les plus
+ * récemment actives, et que tu n'as pas déjà. Classés par nombre de lecteurs
+ * suivis qui l'ont aimé, puis par note moyenne, puis par récence.
+ *
+ * Best-effort : un lecteur dont la lecture échoue est ignoré, et si rien
+ * n'est utilisable (ou tout échoue) il n'y a simplement pas de groupe —
+ * Découvrir ne doit jamais casser à cause du réseau social.
+ */
+async function friendRecommendationGroup(
+  friends: FriendRecommendationSource,
+  excludedIds: Set<string>,
+): Promise<RecommendationGroup | null> {
+  const queried = friends.followingIds.slice(0, MAX_FOLLOWED_QUERIED);
+  if (queried.length === 0) return null;
+
+  const perFriend = await Promise.all(
+    queried.map((uid) => friends.activityRepo.fetchRecentEntries(uid, FRIEND_ENTRIES_PER_USER).catch(() => [] as LibraryEntry[])),
+  );
+
+  const byBook = new Map<string, { entry: LibraryEntry; likers: number; ratings: number[]; latest: string }>();
+  for (const entries of perFriend) {
+    for (const entry of entries) {
+      const liked =
+        entry.listIds.includes(DEFAULT_LIST_IDS.liked) ||
+        (entry.rating !== undefined && entry.rating >= FRIEND_LIKE_MIN_RATING);
+      if (!liked || excludedIds.has(entry.id)) continue;
+
+      const at = entry.activityAt ?? entry.addedAt;
+      const known = byBook.get(entry.id);
+      if (known) {
+        known.likers += 1;
+        if (entry.rating !== undefined) known.ratings.push(entry.rating);
+        if (at > known.latest) known.latest = at;
+      } else {
+        byBook.set(entry.id, { entry, likers: 1, ratings: entry.rating !== undefined ? [entry.rating] : [], latest: at });
+      }
+    }
+  }
+  if (byBook.size === 0) return null;
+
+  const average = (ratings: number[]) => (ratings.length === 0 ? 0 : ratings.reduce((a, b) => a + b, 0) / ratings.length);
+  const ranked = [...byBook.values()]
+    .sort(
+      (a, b) =>
+        b.likers - a.likers ||
+        average(b.ratings) - average(a.ratings) ||
+        new Date(b.latest).getTime() - new Date(a.latest).getTime(),
+    )
+    .slice(0, MAX_BOOKS_PER_GROUP);
+
+  ranked.forEach(({ entry }) => excludedIds.add(entry.id));
+  return {
+    id: 'friends-liked',
+    title: 'Les coups de cœur de tes abonnements',
+    books: ranked.map(({ entry }): Book => ({
+      id: entry.id,
+      workKeys: entry.workKeys,
+      title: entry.title,
+      authors: entry.authors,
+      coverId: entry.coverId,
+      coverUrl: entry.coverUrl,
+      description: entry.description,
+      languages: entry.languages,
+    })),
+  };
 }
 
 /**

@@ -3,6 +3,7 @@ import authReducer from './authSlice';
 import bookDetailReducer from './bookDetailSlice';
 import discoverReducer from './discoverSlice';
 import feedReducer from './feedSlice';
+import friendOpinionsReducer from './friendOpinionsSlice';
 import languageResultsReducer from './languageResultsSlice';
 import libraryReducer from './librarySlice';
 import listsReducer from './listsSlice';
@@ -24,6 +25,7 @@ export const store = configureStore({
     users: usersReducer,
     social: socialReducer,
     feed: feedReducer,
+    friendOpinions: friendOpinionsReducer,
   },
 });
 

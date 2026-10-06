@@ -18,12 +18,14 @@ export default function DiscoverScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
   const { groups, status } = useAppSelector((state) => state.discover);
   const libraryCount = useAppSelector((state) => state.library.entries.length);
+  const followingCount = useAppSelector((state) => state.social.followingIds.length);
 
   useEffect(() => {
     // Recomputed whenever the library's size changes, so a book you just
     // added or removed immediately influences what's suggested next.
+    // Idem quand le nombre d'abonnements change (suivre/ne plus suivre, ou graphe chargé après le démarrage).
     dispatch(fetchRecommendations());
-  }, [dispatch, libraryCount]);
+  }, [dispatch, libraryCount, followingCount]);
 
   const openBook = useCallback(
     (book: Book) => {

@@ -239,6 +239,18 @@ Demande : l'onglet Scanner était redondant. Il est supprimé ; `ScanScreen` dev
 - **Listes** (`ListDetailScreen`) : bouton plein « Scanner un livre » en haut, qui passe `listId`/`listName` — un seul bouton « Ajouter à « <liste> » ». Si le livre est déjà en bibliothèque mais pas dans cette liste, l'ajout passe par `toggleBookList` (`addBook` est sans effet sur un livre existant) ; s'il est déjà dans la liste, on l'indique.
 - `ScanScreen` ne monte la caméra que tant qu'il est au premier plan (`useIsFocused`) et remet `scanSlice` à zéro à l'ouverture et à la fermeture.
 
+## Les abonnements sur la fiche livre et dans Découvrir (08/10/2026)
+
+Deuxième étape du plan « Fil d'amis » : exploiter les abonnements ailleurs que dans l'onglet Fil.
+
+- **« Tes abonnements » sur `BookDetailScreen`** (`FriendOpinionsSection`) : les lecteurs suivis qui ont CE livre — ce qu'ils en ont fait (a lu / le lit en ce moment / a noté / veut le lire), étoiles, note écrite, date — avec la moyenne de leurs notes en en-tête. Rien d'affiché (pas même un titre) quand on ne suit personne ou qu'aucun abonné n'a le livre.
+  - Port `BookOpinionsRepository.fetchEntriesByWorkKeys(uid, workKeys)` (règle 5 : même collection Firestore que le fil, besoin différent), implémenté par `FirestoreBookOpinionsRepository` : `users/{uid}/library` filtré par `workKeys array-contains-any [...]` (30 clés max) — une requête par abonné, index automatique mono-champ, aucune règle à changer. On cherche par `workKeys` et non par id de document parce qu'un livre fusionné a pu être ajouté sous n'importe laquelle de ses clés « œuvre ». Limite : une entrée dont `workKeys` n'a jamais atteint Firestore n'est pas trouvée avant le prochain démarrage de son propriétaire (la sauvegarde en masse réécrit tout).
+  - Usecase `getFriendOpinions(opinionsRepo, profileRepo, followingIds, workKeys)` : reçoit les `followingIds` déjà en mémoire (`state.social`), plafonne à `MAX_FOLLOWED_QUERIED` (30), tolère les échecs par lecteur et ne lève que si TOUS échouent ; `opinionKindOf` (priorité du fil + « veut le lire ») et `summarizeFriendRatings` (moyenne à une décimale).
+  - `friendOpinionsSlice` (`byBook[workKey]` = `{ status, items }`, un rechargement garde les avis affichés) ; thunk `loadFriendOpinions` dispatché par la fiche, à l'ouverture et quand le nombre d'abonnements change (le graphe se charge au démarrage, parfois après l'ouverture).
+  - Le pseudo n'est volontairement PAS cliquable ici : `UserProfile` n'est enregistré que dans les piles Recherche et Fil, pas dans Découvrir/Bibliothèque.
+- **Groupe « Les coups de cœur de tes abonnements » dans Découvrir** (Phase 7 du plan, moitié « amis »). `getRecommendations(repo, bookStatsRepo, libraryEntries, friends?)` gagne un 4e paramètre OPTIONNEL `{ activityRepo, followingIds }` (aucun appelant existant à modifier hors `discoverSlice`). Les livres que les abonnés ont AIMÉS (liste « Aimés » ou note ≥ 4) parmi leurs 15 entrées les plus récemment actives, absents de ta bibliothèque, classés par nombre d'abonnés qui l'ont aimé puis note moyenne puis récence ; 10 au plus. Placé AVANT les autres groupes, et affiché même avec une bibliothèque vide (bon contenu de démarrage à froid). Best-effort : un abonné en échec est ignoré, rien d'utilisable = pas de groupe, jamais d'erreur dans Découvrir. `DiscoverScreen` recharge aussi quand le nombre d'abonnements change.
+- Tests : `tests/friendOpinions.test.ts`, `tests/friendRecommendations.test.ts`.
+
 ## Pièges connus — à relire AVANT d'éditer du code (mémo)
 
 Erreurs déjà commises plusieurs fois et corrigées à la main par Cesar. Ne plus les réintroduire.

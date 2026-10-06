@@ -1,4 +1,5 @@
 import { FirebaseAuthRepository } from '../data/firebase/FirebaseAuthRepository';
+import { FirestoreBookOpinionsRepository } from '../data/firebase/FirestoreBookOpinionsRepository';
 import { FirestoreBookStatsRepository } from '../data/firebase/FirestoreBookStatsRepository';
 import { FirestoreActivityFeedRepository } from '../data/firebase/FirestoreActivityFeedRepository';
 import { FirestoreFollowRepository } from '../data/firebase/FirestoreFollowRepository';
@@ -13,6 +14,7 @@ import { OpenLibraryBookRepository } from '../data/openLibrary/OpenLibraryBookRe
 import type { ActivityFeedRepository } from '../domain/repositories/ActivityFeedRepository';
 import type { AuthRepository } from '../domain/repositories/AuthRepository';
 import type { BookRepository } from '../domain/repositories/BookRepository';
+import type { BookOpinionsRepository } from '../domain/repositories/BookOpinionsRepository';
 import type { BookStatsRepository } from '../domain/repositories/BookStatsRepository';
 import type { FollowRepository } from '../domain/repositories/FollowRepository';
 import type { GoogleIdentityProvider } from '../domain/repositories/GoogleIdentityProvider';
@@ -38,3 +40,4 @@ export const userProfileRepository: UserProfileRepository = new FirestoreUserPro
 export const userSearchRepository: UserSearchRepository = new FirestoreUserSearchRepository();
 export const followRepository: FollowRepository = new FirestoreFollowRepository();
 export const activityFeedRepository: ActivityFeedRepository = new FirestoreActivityFeedRepository();
+export const bookOpinionsRepository: BookOpinionsRepository = new FirestoreBookOpinionsRepository();

@@ -212,6 +212,8 @@ Sens de dépendance : `screens/` et `store/` → `domain/` (interfaces) ; `data/
 
 Voir la section Roadmap du cahier des charges (doc Claude) : mode sombre/clair, LibriVox pour les audiobooks du domaine public, partage vers d'autres applis, widget d'écran d'accueil.
 
+- **Abonnements sur la fiche livre et dans Découvrir (08/10/2026)** : la fiche d'un livre affiche une section « Tes abonnements » (ce qu'en ont fait les lecteurs que tu suis, leurs étoiles, leur note écrite, moyenne des notes) uniquement quand au moins un abonné a ce livre ; Découvrir commence par un groupe « Les coups de cœur de tes abonnements » (livres aimés ou notés 4+ par tes abonnés, que tu n'as pas déjà). Aucune nouvelle règle Firestore ni index à créer. Détail technique dans `CLAUDE.md`.
+
 ## Tests
 
 `npm test` lance les tests de `tests/` (bibliothèque, fil d'amis, recherche d'utilisateurs, suivi, genres, dates) avec le lanceur intégré de Node — Node 22.18 ou plus récent, aucune dépendance à installer. Ils couvrent la logique pure de `src/domain/usecases` et `src/utils`, pas l'interface ni Firebase. Pour un vrai contrôle de types : `npx tsc --noEmit`.

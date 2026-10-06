@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { bookRepository, bookStatsRepository } from '../composition/repositories';
+import { activityFeedRepository, bookRepository, bookStatsRepository } from '../composition/repositories';
 import type { RecommendationGroup } from '../domain/entities/RecommendationGroup';
 import { getRecommendations } from '../domain/usecases/getRecommendations';
 import type { RootState } from './store';
@@ -12,8 +12,11 @@ type DiscoverState = {
 const initialState: DiscoverState = { groups: [], status: 'idle' };
 
 export const fetchRecommendations = createAsyncThunk('discover/fetch', (_: void, { getState }) => {
-  const { entries } = (getState() as RootState).library;
-  return getRecommendations(bookRepository, bookStatsRepository, entries);
+  const state = getState() as RootState;
+  // Les abonnements alimentent un groupe de plus ("coups de cœur de tes abonnements") — seulement si on en suit.
+  const { followingIds } = state.social;
+  const friends = followingIds.length > 0 ? { activityRepo: activityFeedRepository, followingIds } : undefined;
+  return getRecommendations(bookRepository, bookStatsRepository, state.library.entries, friends);
 });
 
 const discoverSlice = createSlice({
