@@ -17,4 +17,11 @@ export type Book = {
   description?: string;
   firstPublishYear?: number;
   languages: string[]; // language codes aggregated across the merged works, e.g. ['eng', 'fre']
+  // Un ou deux libellés de genre littéraire en français (ex. ["Policier", "Thriller"]),
+  // déduits des sujets Open Library par `utils/genreLabels.ts` (`matchKnownGenres`).
+  // Absent/vide quand la source n'expose pas de sujets (Google Books, BnF,
+  // recommandations collaboratives lues depuis Firestore) ou qu'aucun sujet ne
+  // correspond à un genre connu — jamais de repli inventé, `BookCard` n'affiche
+  // alors simplement aucun tag. Purement dérivé, jamais persisté en bibliothèque.
+  genres?: string[];
 };

@@ -1,6 +1,7 @@
 import type { Book } from '../../domain/entities/Book';
 import type { BookDetail } from '../../domain/entities/BookDetail';
 import type { Edition } from '../../domain/entities/Edition';
+import { matchKnownGenres } from '../../utils/genreLabels';
 import type { OpenLibraryDoc, RawEdition, RawIsbnEdition, WorkDetail } from './types';
 
 /**
@@ -55,6 +56,7 @@ function docsToBook(group: OpenLibraryDoc[]): Book {
     coverId,
     firstPublishYear: years.length > 0 ? Math.min(...years) : undefined,
     languages: dedupe(group.flatMap((d) => d.language ?? [])),
+    genres: matchKnownGenres(group.flatMap((d) => d.subject ?? [])),
   };
 }
 

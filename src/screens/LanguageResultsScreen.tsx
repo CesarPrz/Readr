@@ -75,6 +75,7 @@ export default function LanguageResultsScreen({ route, navigation }: Props) {
             <BookCard
               title={item.title}
               authors={item.authors}
+              genres={item.genres}
               coverUrl={item.coverUrl ?? bookRepository.coverUrl(item.coverId, 'M')}
               onPress={() => openBook(item)}
             />

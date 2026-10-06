@@ -14,6 +14,7 @@ import {
   linkGoogleAccount as linkGoogleAccountUseCase,
   type LinkGoogleAccountResult,
 } from '../domain/usecases/linkGoogleAccount';
+import { updateBio as updateBioUseCase } from '../domain/usecases/updateBio';
 import { loadUserProfile as loadUserProfileUseCase } from '../domain/usecases/loadUserProfile';
 import { signOutUser as signOutUserUseCase } from '../domain/usecases/signOutUser';
 import { syncProfilePhotoToCloud as syncProfilePhotoToCloudUseCase } from '../domain/usecases/syncProfilePhotoToCloud';
@@ -46,12 +47,13 @@ const initialState: AuthState = {
 export const ensureSignedIn = createAsyncThunk('auth/ensureSignedIn', () => ensureSignedInUseCase(authRepository));
 
 /**
- * Charge le pseudo public (`username`, "Profil fusionné", voir
- * `loadUserProfile.ts`) une fois `ensureSignedIn` résolu — a besoin du `uid`
- * déjà dans l'état, donc dispatché juste après lui (voir App.tsx), jamais en
- * parallèle. Distinct d'`ensureSignedIn` : un échec ici (Firestore
- * injoignable) ne doit jamais empêcher la connexion anonyme elle-même de
- * réussir, qui reste la fondation de tout le reste.
+ * Charge le pseudo public et la bio (`username`/`bio`, "Profil fusionné" puis
+ * "Profil façon Instagram", voir `loadUserProfile.ts`) une fois
+ * `ensureSignedIn` résolu — a besoin du `uid` déjà dans l'état, donc
+ * dispatché juste après lui (voir App.tsx), jamais en parallèle. Distinct
+ * d'`ensureSignedIn` : un échec ici (Firestore injoignable) ne doit jamais
+ * empêcher la connexion anonyme elle-même de réussir, qui reste la fondation
+ * de tout le reste.
  */
 export const loadUserProfile = createAsyncThunk('auth/loadUserProfile', (_: void, { getState }) => {
   const uid = (getState() as RootState).auth.user?.uid;
@@ -70,6 +72,17 @@ export const updateUsername = createAsyncThunk('auth/updateUsername', (rawUserna
   const uid = (getState() as RootState).auth.user?.uid;
   if (!uid) throw new Error('updateUsername appelé sans utilisateur courant — ne devrait jamais arriver.');
   return updateUsernameUseCase(userProfileRepository, uid, rawUsername);
+});
+
+/**
+ * Change la bio publique — "Profil façon Instagram" (08/10/2026), même
+ * mécanique que `updateUsername` juste au-dessus (mise à jour optimiste dès
+ * `.pending`, écriture Firestore best-effort via `updateBio.ts`).
+ */
+export const updateBio = createAsyncThunk('auth/updateBio', (rawBio: string, { getState }) => {
+  const uid = (getState() as RootState).auth.user?.uid;
+  if (!uid) throw new Error('updateBio appelé sans utilisateur courant — ne devrait jamais arriver.');
+  return updateBioUseCase(userProfileRepository, uid, rawBio);
 });
 
 // Déclenché uniquement par le bouton "Se connecter avec Google" de l'écran
@@ -107,8 +120,8 @@ export const linkGoogleAccount = createAsyncThunk<LinkGoogleAccountResult, void>
       // pseudo déjà en mémoire : coût négligeable, et ça évite une branche
       // séparée pour un cas qui n'arrive presque jamais (lier Google juste
       // après avoir édité son pseudo dans la même session).
-      const username = await loadUserProfileUseCase(userProfileRepository, result.profile.uid);
-      result.profile = { ...result.profile, username };
+      const profile = await loadUserProfileUseCase(userProfileRepository, result.profile.uid);
+      result.profile = { ...result.profile, username: profile.username, bio: profile.bio };
       // Republie la photo Google de CE compte dans son profil public —
       // fire-and-forget (jamais attendu), jamais sur le chemin critique de
       // l'affichage (voir la doc de `syncProfilePhotoToCloud`).
@@ -139,14 +152,18 @@ const authSlice = createSlice({
         state.status = 'error';
       })
       .addCase(loadUserProfile.fulfilled, (state, action) => {
-        if (state.user) state.user.username = action.payload;
+        if (state.user) {
+          state.user.username = action.payload.username;
+          state.user.bio = action.payload.bio;
+        }
       })
       // Pas de cas `.rejected` : ne devrait arriver que si ce thunk est
       // dispatché avant `ensureSignedIn` (erreur de programmation, pas un
       // échec réseau — `loadUserProfileUseCase` lui-même ne rejette jamais,
       // voir sa doc). Un échec silencieux ici laisserait simplement `user`
-      // sans `username`, l'écran retombant alors sur le même pseudonyme
-      // généré que celui que ce usecase aurait lui-même renvoyé.
+      // sans `username`/`bio`, l'écran retombant alors sur le même repli
+      // (pseudonyme généré, bio absente) que celui que ce usecase aurait
+      // lui-même renvoyé.
       .addCase(updateUsername.pending, (state, action) => {
         // Optimiste : affiche la saisie immédiatement, avant même que
         // l'écriture Firestore (best-effort) ne résolve — voir la doc du
@@ -157,6 +174,13 @@ const authSlice = createSlice({
       })
       .addCase(updateUsername.fulfilled, (state, action) => {
         if (state.user) state.user.username = action.payload;
+      })
+      .addCase(updateBio.pending, (state, action) => {
+        // Même principe optimiste qu'updateUsername.pending ci-dessus.
+        if (state.user) state.user.bio = action.meta.arg;
+      })
+      .addCase(updateBio.fulfilled, (state, action) => {
+        if (state.user) state.user.bio = action.payload;
       })
       .addCase(linkGoogleAccount.pending, (state) => {
         state.googleLinkStatus = 'loading';

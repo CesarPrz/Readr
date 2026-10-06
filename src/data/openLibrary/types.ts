@@ -7,6 +7,7 @@ export type OpenLibraryDoc = {
   cover_i?: number;
   edition_count?: number;
   language?: string[]; // languages found across this work's editions, per Open Library's own aggregation
+  subject?: string[]; // sujets en texte libre (genres, thèmes, lieux... mélangés) — voir utils/genreLabels.ts
 };
 
 export type SearchResponse = {

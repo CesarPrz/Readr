@@ -24,11 +24,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // "Profil fusionné" (07/10/2026) : pseudo public (`username`, modifiable
     // à tout moment même resté anonyme) + miroir de la photo Google
-    // (`photoUrl`), voir `UserProfileRepository`. Même logique de lecture
-    // publique/écriture propriétaire que `library`/`lists` ci-dessous — posé
-    // en prévision de la Phase "Amis" (consultation du profil d'un AUTRE
-    // utilisateur), pas encore d'écran qui lit le profil de quelqu'un
-    // d'autre pour l'instant.
+    // (`photoUrl`), voir `UserProfileRepository`. Étendu par "Profil façon
+    // Instagram" (08/10/2026) avec une description libre (`bio`) — même
+    // document, mêmes règles, rien à changer ici pour ce champ en plus. Même
+    // logique de lecture publique/écriture propriétaire que `library`/
+    // `lists` ci-dessous — posé en prévision de la Phase "Amis" (consultation
+    // du profil d'un AUTRE utilisateur), pas encore d'écran qui lit le profil
+    // de quelqu'un d'autre pour l'instant. Les compteurs Abonnés/Abonnements
+    // affichés par `ProfileHeader` ne vivent dans AUCUN document Firestore :
+    // purement visuels pour l'instant (toujours 0), voir la doc de ce
+    // composant.
     match /users/{uid} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;

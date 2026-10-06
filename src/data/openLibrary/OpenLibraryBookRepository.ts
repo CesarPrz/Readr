@@ -14,7 +14,7 @@ const PAGE_SIZE = 20;
 export class OpenLibraryBookRepository implements BookRepository {
   async search(query: string, page: number): Promise<SearchBooksResult> {
     const offset = (page - 1) * PAGE_SIZE;
-    const fields = ['key', 'title', 'author_name', 'first_publish_year', 'cover_i', 'edition_count', 'language'].join(
+    const fields = ['key', 'title', 'author_name', 'first_publish_year', 'cover_i', 'edition_count', 'language', 'subject'].join(
       ',',
     );
     const url = `${BASE_URL}/search.json?q=${encodeURIComponent(query)}&limit=${PAGE_SIZE}&offset=${offset}&fields=${fields}`;

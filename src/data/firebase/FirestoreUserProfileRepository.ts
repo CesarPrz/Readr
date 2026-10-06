@@ -18,6 +18,7 @@ export class FirestoreUserProfileRepository implements UserProfileRepository {
       return {
         username: typeof data.username === 'string' ? data.username : '',
         photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : undefined,
+        bio: typeof data.bio === 'string' ? data.bio : undefined,
       };
     } catch {
       return null; // best-effort, voir la doc du port — jamais bloquant pour l'utilisateur
@@ -37,6 +38,7 @@ export class FirestoreUserProfileRepository implements UserProfileRepository {
         {
           ...('username' in patch ? { username: patch.username } : {}),
           ...('photoUrl' in patch ? { photoUrl: patch.photoUrl ?? null } : {}),
+          ...('bio' in patch ? { bio: patch.bio ?? null } : {}),
           updatedAt: serverTimestamp(),
         },
         { merge: true },

@@ -101,6 +101,25 @@ function normalize(value: string): string {
     .replace(/[̀-ͯ]/g, '');
 }
 
+/**
+ * Jusqu'à `max` libellés de genre DISTINCTS reconnus dans `subjects`, dans
+ * l'ordre où Open Library les renvoie — pour les tags affichés sur les
+ * cartes de livres (résultats de recherche et Découvrir). Même table de
+ * correspondance que `matchKnownGenre` ; `[]` si rien ne correspond.
+ */
+export function matchKnownGenres(subjects: string[], max = 2): string[] {
+  const labels: string[] = [];
+  for (const subject of subjects) {
+    const normalized = normalize(subject);
+    const definition = GENRE_DEFINITIONS.find((def) => def.keywords.some((keyword) => normalized.includes(keyword)));
+    if (definition && !labels.includes(definition.label)) {
+      labels.push(definition.label);
+      if (labels.length >= max) break;
+    }
+  }
+  return labels;
+}
+
 export type GenreMatch = {
   /** Étiquette affichée à l'utilisateur (ex. "Policier"). */
   label: string;

@@ -9,7 +9,7 @@ import { DEFAULT_LIST_IDS, type ReadingList } from '../domain/entities/ReadingLi
 import { generateAnonymousPseudonym } from '../utils/anonymousPseudonym';
 import { useLibrarySync } from '../hooks/useLibrarySync';
 import type { LibraryStackParamList } from '../navigation/types';
-import { linkGoogleAccount, signOutUser, updateUsername } from '../store/authSlice';
+import { linkGoogleAccount, signOutUser, updateBio, updateUsername } from '../store/authSlice';
 import { createList, deleteList } from '../store/listsSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, radius, spacing, typography } from '../theme/theme';
@@ -33,7 +33,10 @@ const DEFAULT_ORDER = [DEFAULT_LIST_IDS.toRead, DEFAULT_LIST_IDS.reading, DEFAUL
  * même chose du point de vue de l'utilisateur, et pour uniformiser la mise
  * en page avec ce que montrera plus tard le profil d'un AUTRE utilisateur
  * (Phase "Amis", pas encore construite — `ProfileHeader` est déjà prêt pour
- * un mode lecture seule, voir `editable`).
+ * un mode lecture seule, voir `editable`). Depuis "Profil façon Instagram"
+ * (08/10/2026), `ProfileHeader` affiche aussi une bio éditable (`user.bio`)
+ * et des compteurs Abonnés/Abonnements purement visuels — voir la doc de ce
+ * composant.
  */
 export default function LibraryScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
@@ -118,9 +121,11 @@ export default function LibraryScreen({ navigation }: Props) {
               <ProfileHeader
                 username={user.username ?? generateAnonymousPseudonym(user.uid)}
                 photoUrl={user.photoUrl}
+                bio={user.bio}
                 isAnonymous={user.isAnonymous}
                 editable
                 onEditUsername={(newUsername) => dispatch(updateUsername(newUsername))}
+                onEditBio={(newBio) => dispatch(updateBio(newBio))}
                 onGoogleSignIn={handleGoogleSignIn}
                 onSignOut={handleSignOut}
                 googleLinkStatus={googleLinkStatus}

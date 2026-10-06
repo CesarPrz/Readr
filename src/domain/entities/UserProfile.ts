@@ -18,6 +18,13 @@
  * `generateAnonymousPseudonym(user.uid)` (même valeur que le repli appliqué
  * côté `loadUserProfile`) pour la brève fenêtre avant que ce dernier ne
  * résolve.
+ *
+ * `bio` (08/10/2026, "Profil façon Instagram") suit exactement la même
+ * mécanique que `username` — public, éditable à tout moment même resté
+ * anonyme, stockée dans le même document `users/{uid}` — mais n'a PAS de
+ * repli généré quand elle est absente : contrairement au pseudo, un profil
+ * sans bio affiche simplement un espace vide (ou une invite à en écrire une,
+ * côté `ProfileHeader`), jamais de texte de substitution.
  */
 export type UserProfile = {
   uid: string;
@@ -25,4 +32,5 @@ export type UserProfile = {
   displayName?: string;
   photoUrl?: string;
   username?: string;
+  bio?: string;
 };

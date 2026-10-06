@@ -46,4 +46,12 @@ export interface UserProfileRepository {
 export type PublicUserProfile = {
   username: string;
   photoUrl?: string;
+  /**
+   * Description libre façon Instagram (08/10/2026, "Profil façon Instagram"
+   * — voir le plan Firebase) : même mécanique que `username` (éditable à
+   * tout moment, même resté anonyme, voir `updateBio.ts`), mais conserve les
+   * retours à la ligne saisis (contrairement au pseudo, qui reste sur une
+   * seule ligne) — borné à `MAX_BIO_LENGTH` plutôt qu'à `MAX_USERNAME_LENGTH`.
+   */
+  bio?: string;
 };

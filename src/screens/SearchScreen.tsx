@@ -156,6 +156,7 @@ export default function SearchScreen({ navigation }: Props) {
                     key={book.id}
                     title={book.title}
                     authors={book.authors}
+                    genres={book.genres}
                     coverUrl={book.coverUrl ?? bookRepository.coverUrl(book.coverId, 'M')}
                     onPress={() => openBook(book)}
                     width={ROW_CARD_WIDTH}

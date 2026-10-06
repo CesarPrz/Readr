@@ -6,13 +6,15 @@ import { colors, radius, spacing, typography } from '../theme/theme';
 type Props = {
   title: string;
   authors: string[];
+  /** Un ou deux tags de genre (voir `Book.genres`) — rien n'est affiché si absent ou vide. */
+  genres?: string[];
   coverUrl?: string;
   onPress: () => void;
   /** '48%' (grille deux colonnes) par défaut ; une largeur fixe en pixels pour une row horizontale. */
   width?: number | `${number}%`;
 };
 
-export default function BookCard({ title, authors, coverUrl, onPress, width = '48%' }: Props) {
+export default function BookCard({ title, authors, genres, coverUrl, onPress, width = '48%' }: Props) {
   return (
     <Pressable style={({ pressed }) => [styles.card, { width }, pressed && styles.pressed]} onPress={onPress}>
       <View style={styles.coverWrap}>
@@ -32,6 +34,17 @@ export default function BookCard({ title, authors, coverUrl, onPress, width = '4
       <Text style={styles.author} numberOfLines={1}>
         {authors[0] ?? 'Auteur inconnu'}
       </Text>
+      {genres && genres.length > 0 && (
+        <View style={styles.tags}>
+          {genres.slice(0, 2).map((genre) => (
+            <View key={genre} style={styles.tag}>
+              <Text style={styles.tagText} numberOfLines={1}>
+                {genre}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -69,5 +82,23 @@ const styles = StyleSheet.create({
   author: {
     ...typography.body,
     marginTop: 2,
+  },
+  tags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.xs + 2,
+  },
+  tag: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    maxWidth: '100%',
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.accentOrange,
   },
 });
