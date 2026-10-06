@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { FeedItem, FeedItemKind } from '../domain/entities/FeedItem';
 import { colors, radius, spacing, typography } from '../theme/theme';
+import { describeReadingPeriod } from '../utils/readingDates';
 import { relativeTime } from '../utils/relativeTime';
 import StarRatingDisplay from './StarRatingDisplay';
 
@@ -31,6 +32,13 @@ const AVATAR_SIZE = 22;
  */
 export default function FeedItemRow({ item, coverUrl, onOpenBook, onOpenUser }: Props) {
   const { user, entry, kind, at } = item;
+  // Dates de lecture ("Dates de lecture", 08/10/2026) : période pour « a lu », début seul pour « a commencé » — rien pour une simple note.
+  const period =
+    kind === 'read'
+      ? describeReadingPeriod(entry.startedAt, entry.finishedAt)
+      : kind === 'reading'
+        ? describeReadingPeriod(entry.startedAt, undefined)
+        : null;
 
   return (
     <View style={styles.row}>
@@ -71,6 +79,8 @@ export default function FeedItemRow({ item, coverUrl, onOpenBook, onOpenUser }: 
             {entry.authors[0] ?? 'Auteur inconnu'}
           </Text>
         </Pressable>
+
+        {period ? <Text style={styles.period}>{period}</Text> : null}
 
         {entry.rating !== undefined && (
           <View style={styles.stars}>
@@ -154,6 +164,11 @@ const styles = StyleSheet.create({
   author: {
     ...typography.body,
     marginTop: 2,
+  },
+  period: {
+    fontSize: 12,
+    color: colors.accentSage,
+    marginTop: spacing.xs,
   },
   stars: {
     marginTop: spacing.xs + 2,

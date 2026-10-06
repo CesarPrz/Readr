@@ -9,6 +9,7 @@ import type { LibraryStackParamList } from '../navigation/types';
 import { deleteList } from '../store/listsSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, radius, spacing, typography } from '../theme/theme';
+import { readingCaption } from '../utils/readingCaption';
 
 type Props = NativeStackScreenProps<LibraryStackParamList, 'ListDetail'>;
 
@@ -102,6 +103,7 @@ export default function ListDetailScreen({ route, navigation }: Props) {
           <BookCard
             title={item.title}
             authors={item.authors}
+            caption={readingCaption(item, listId)}
             coverUrl={item.coverUrl ?? bookRepository.coverUrl(item.coverId, 'M')}
             onPress={() =>
               navigation.navigate('BookDetail', {

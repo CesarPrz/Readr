@@ -262,6 +262,20 @@ Demande : *« pour l'écran d'accueil, s'inspirer de Goodreads, avec une barre d
 - **Obsolète, convention habituelle (fichier vidé + commentaire)** : `FeedScreen.tsx`, `FeedStackParamList`, l'onglet « Fil ». `BookDetailScreen` est typé sur `HomeStackParamList` à la place de `FeedStackParamList`.
 - Pas de test automatisé (écran de présentation uniquement) ; jamais lancé sur un appareil : à vérifier à l'œil (barre de recherche sous l'encoche, focus du champ Recherche, retour depuis le scan).
 
+## Dates de lecture (08/10/2026)
+
+Demande : *« pour la date de lecture, pouvoir mettre début de lecture / fin de lecture »* (première brique de « Mon année de lecture »). Décisions tranchées avec le porteur du projet : **sélecteur NATIF** de dates (`@react-native-community/datetimepicker`) ; **remplissage automatique** au changement de statut, modifiable ensuite ; affichage aussi dans le **fil d'amis** et les **listes** (la sienne et celle d'un lecteur).
+
+- **À FAIRE avant de lancer l'app : `npx expo install @react-native-community/datetimepicker`, puis refaire un build du dev client** (`npm run devclient:android:dev`) — module natif. Sans l'installation, Metro ne résout pas `ReadingDateField` et l'app ne démarre plus. Le `package.json` n'est volontairement pas modifié à la main (la version dépend du SDK Expo).
+- **Modèle** : `LibraryEntry.startedAt?` / `finishedAt?`, des JOURS calendaires `YYYY-MM-DD` (pas des instants ISO : le jour où l'on a fini un livre ne doit pas dépendre du fuseau). Synchronisés sur Firestore avec l'entrée (`toFirestoreLibraryEntry` : `null` si absents ; `fromFirestoreLibraryEntry` rejette toute valeur qui n'est pas un vrai jour). Aucune règle Firestore à changer. Modifier une date n'est PAS une activité du fil (`activityAt` inchangé).
+- **`utils/readingDates.ts`** (pur, testé) : `isReadingDay`, `toReadingDay` (jour LOCAL), `readingDayToDate` (midi local, à l'abri de l'heure d'été), `formatReadingDay` (« 8 oct. 2026 », mois français écrits à la main — pas de `Intl`), `readingDays` (début et fin compris), `describeReadingPeriod` (« Du 3 oct. au 12 oct. 2026 », « Lu le … », « Commencé le … », « Terminé le … »). `utils/readingCaption.ts` : la légende sous une couverture dans une liste (période dans « Lu », début dans « En cours », rien ailleurs).
+- **Remplissage automatique** (`applyStatusDates`, partagé par `toggleBookList` et `addBookToLibrary`) : « En cours » pose le début à aujourd'hui ; « Lu » pose la fin à aujourd'hui, et le début s'il est vide. **On ne remplace jamais une date déjà renseignée.** Les autres statuts, retirer une liste, aimer, une liste perso : aucune date touchée (une `finishedAt` reste sur un livre repassé « En cours » mais n'est affichée nulle part).
+- **`updateLibraryEntry`** : `LibraryEntryPatch` accepte `startedAt`/`finishedAt` (`undefined` = effacer). Garde-fou `sanitizeDates` : une date qui n'est pas un vrai jour, ou une fin AVANT le début (jugée sur le résultat fusionné), est ignorée ; le reste du patch (note, étoiles) passe.
+- **UI** : `ReadingDateField` (une ligne « libellé — date » ; Android = `DateTimePickerAndroid.open`, iOS = calendrier `inline` sous la ligne avec « OK » ; croix = effacer ; jamais de date future). Dans `BookDetailScreen`, section « Dates de lecture » : début dès « En cours », fin seulement si « Lu », et « Lu en N jours ». Choisir une fin AVANT le début tire aussi le début à ce jour (cas : livre marqué « Lu » aujourd'hui alors qu'il a été fini le mois dernier) ; le sélecteur du début est borné à la fin, rien n'est déplacé en douce dans ce sens.
+- **Affichage** : `FeedItemRow` (période pour « a lu », début pour « a commencé »), `BookCard` (prop `caption`) dans `ListDetailScreen` et `UserListScreen`. Les livres déjà dans la bibliothèque n'ont pas de dates (pas de rattrapage) ; chez un ami, elles n'apparaissent qu'après qu'il les a saisies ou changé un statut.
+- Tests : `tests/readingDates.test.ts` (utilitaires, remplissage automatique, garde-fous de `updateLibraryEntry`, légende).
+- Jamais lancé sur un appareil : à vérifier à l'œil (boîte de dialogue Android, calendrier iOS en thème sombre, croix d'effacement).
+
 ## Pièges connus — à relire AVANT d'éditer du code (mémo)
 
 Erreurs déjà commises plusieurs fois et corrigées à la main par Cesar. Ne plus les réintroduire.
@@ -278,5 +292,6 @@ Erreurs déjà commises plusieurs fois et corrigées à la main par Cesar. Ne pl
 - `tests/friendFeed.test.ts` : `feedKindOf`, tri, plafonds (30 lecteurs, 60 lignes), tolérance aux lecteurs en échec, erreur si tous échouent.
 - `tests/social.test.ts` : normalisation de la recherche d'utilisateurs, `searchUsers`, `followUser`, `updateUsername`/`updateBio`.
 - `tests/utils.test.ts` : tags de genre, dates relatives.
+- `tests/readingDates.test.ts` : dates de lecture (voir la section « Dates de lecture »).
 - `tests/` est exclu de `tsconfig.json` (Node, `node:test` n'ont pas de types sans `@types/node`) : les tests ne sont pas type-checkés par `tsc`.
 - Pour ajouter un test : un fichier `tests/<sujet>.test.ts`, des dépôts factices écrits à la main dans le test (voir `tests/helpers.ts`), jamais de mock de Firebase.

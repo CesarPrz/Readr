@@ -30,5 +30,16 @@ export type LibraryEntry = {
    * l'activité réelle. Absent sur les entrées antérieures à cette
    * fonctionnalité — la synchronisation le remplace alors par `addedAt`.
    */
-  activityAt?: string;
+  activityAt?: string;  /**
+   * Dates de lecture ("Dates de lecture", 08/10/2026) : jours calendaires
+   * `YYYY-MM-DD` (pas des instants — voir `utils/readingDates.ts`), tous deux
+   * optionnels. Posées automatiquement au changement de statut (voir
+   * `applyStatusDates`) puis modifiables à la main sur la fiche du livre ;
+   * `finishedAt` n'a de sens qu'à partir du début (jamais avant `startedAt`,
+   * voir `updateLibraryEntry`). Les modifier n'est PAS une "activité" du
+   * fil (`activityAt` inchangé). Synchronisées sur Firestore avec le reste de
+   * l'entrée — donc publiques, comme la bibliothèque.
+   */
+  startedAt?: string;
+  finishedAt?: string;
 };

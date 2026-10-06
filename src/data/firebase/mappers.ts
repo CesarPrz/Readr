@@ -3,6 +3,7 @@ import { serverTimestamp } from 'firebase/firestore';
 import type { UserProfile } from '../../domain/entities/UserProfile';
 import type { LibraryEntry } from '../../domain/entities/LibraryEntry';
 import type { ReadingList } from '../../domain/entities/ReadingList';
+import { isReadingDay } from '../../utils/readingDates';
 
 /** `firebase/auth`'s `User` → `UserProfile` du domain. Même séparation raw-types/mapping que les autres sources de `data/`. */
 export function toUserProfile(user: User): UserProfile {
@@ -54,6 +55,9 @@ export function toFirestoreLibraryEntry(entry: LibraryEntry) {
     // pour elles (sans quoi la requête `orderBy('activityAt')` du fil, qui
     // ignore les documents sans ce champ, ne les verrait jamais).
     activityAt: entry.activityAt ?? entry.addedAt,
+    // Dates de lecture ("Dates de lecture", 08/10/2026), jours `YYYY-MM-DD` ; `null` quand absentes (Firestore refuse `undefined`).
+    startedAt: entry.startedAt ?? null,
+    finishedAt: entry.finishedAt ?? null,
     updatedAt: serverTimestamp(),
   };
 }
@@ -83,6 +87,8 @@ export function fromFirestoreLibraryEntry(id: string, data: Record<string, unkno
     note: typeof data.note === 'string' ? data.note : undefined,
     addedAt: typeof data.addedAt === 'string' ? data.addedAt : new Date().toISOString(),
     activityAt: typeof data.activityAt === 'string' ? data.activityAt : undefined,
+    startedAt: isReadingDay(data.startedAt) ? data.startedAt : undefined,
+    finishedAt: isReadingDay(data.finishedAt) ? data.finishedAt : undefined,
   };
 }
 

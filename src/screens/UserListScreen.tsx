@@ -7,6 +7,7 @@ import type { PublicProfileStackParamList } from '../navigation/types';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { loadPublicProfile } from '../store/usersSlice';
 import { colors, spacing, typography } from '../theme/theme';
+import { readingCaption } from '../utils/readingCaption';
 
 type Props = NativeStackScreenProps<PublicProfileStackParamList, 'UserList'>;
 
@@ -60,6 +61,7 @@ export default function UserListScreen({ route, navigation }: Props) {
           <BookCard
             title={item.title}
             authors={item.authors}
+            caption={readingCaption(item, listId)}
             coverUrl={item.coverUrl ?? bookRepository.coverUrl(item.coverId, 'M')}
             onPress={() =>
               navigation.navigate('BookDetail', {

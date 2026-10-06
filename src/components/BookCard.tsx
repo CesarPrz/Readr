@@ -8,13 +8,15 @@ type Props = {
   authors: string[];
   /** Un ou deux tags de genre (voir `Book.genres`) — rien n'est affiché si absent ou vide. */
   genres?: string[];
+  /** Petite ligne discrète sous l'auteur (ex. dates de lecture, voir `readingCaption`) — rien n'est affiché si absente. */
+  caption?: string;
   coverUrl?: string;
   onPress: () => void;
   /** '48%' (grille deux colonnes) par défaut ; une largeur fixe en pixels pour une row horizontale. */
   width?: number | `${number}%`;
 };
 
-export default function BookCard({ title, authors, genres, coverUrl, onPress, width = '48%' }: Props) {
+export default function BookCard({ title, authors, genres, caption, coverUrl, onPress, width = '48%' }: Props) {
   return (
     <Pressable style={({ pressed }) => [styles.card, { width }, pressed && styles.pressed]} onPress={onPress}>
       <View style={styles.coverWrap}>
@@ -34,6 +36,11 @@ export default function BookCard({ title, authors, genres, coverUrl, onPress, wi
       <Text style={styles.author} numberOfLines={1}>
         {authors[0] ?? 'Auteur inconnu'}
       </Text>
+      {caption ? (
+        <Text style={styles.caption} numberOfLines={2}>
+          {caption}
+        </Text>
+      ) : null}
       {genres && genres.length > 0 && (
         <View style={styles.tags}>
           {genres.slice(0, 2).map((genre) => (
@@ -81,6 +88,11 @@ const styles = StyleSheet.create({
   },
   author: {
     ...typography.body,
+    marginTop: 2,
+  },
+  caption: {
+    fontSize: 11,
+    color: colors.accentSage,
     marginTop: 2,
   },
   tags: {

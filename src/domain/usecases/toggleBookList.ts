@@ -1,6 +1,8 @@
+import { toReadingDay } from '../../utils/readingDates';
 import type { LibraryEntry } from '../entities/LibraryEntry';
 import type { ReadingList } from '../entities/ReadingList';
 import type { LibraryRepository } from '../repositories/LibraryRepository';
+import { applyStatusDates } from './applyStatusDates';
 
 /**
  * Ajoute ou retire un livre d'une liste. Si la liste est `exclusive` (À
@@ -32,7 +34,9 @@ export async function toggleBookList(
     // visible dans le fil des abonnés — voir `LibraryEntry.activityAt`. Retirer
     // une liste, aimer ou ajouter à une liste perso n'en est pas une.
     const activityAt = add && targetList?.exclusive ? new Date().toISOString() : entry.activityAt;
-    return { ...entry, listIds, activityAt };
+    const updated = { ...entry, listIds, activityAt };
+    // Dates de lecture : « En cours »/« Lu » les posent si elles sont vides (voir `applyStatusDates`).
+    return add && targetList?.exclusive ? applyStatusDates(updated, listId, toReadingDay()) : updated;
   });
   await repo.saveAll(next);
   return next;

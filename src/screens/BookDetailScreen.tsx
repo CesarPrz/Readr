@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import CoverCarousel from '../components/CoverCarousel';
 import FriendOpinionsSection from '../components/FriendOpinionsSection';
 import RatingStars from '../components/RatingStars';
+import ReadingDateField from '../components/ReadingDateField';
 import StatusSegmented from '../components/StatusSegmented';
 import { bookRepository } from '../composition/repositories';
 import type { Book } from '../domain/entities/Book';
@@ -21,6 +22,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { addBook, patchLibraryEntry, removeBook, toggleBookList } from '../store/librarySlice';
 import { colors, radius, spacing, typography } from '../theme/theme';
 import { languageLabel } from '../utils/languageLabels';
+import { readingDays } from '../utils/readingDates';
 
 type Props = NativeStackScreenProps<
   SearchStackParamList | DiscoverStackParamList | LibraryStackParamList | HomeStackParamList,
@@ -137,6 +139,24 @@ export default function BookDetailScreen({ route }: Props) {
     }
   }, [dispatch, entry, liked, workKey, presetBook]);
 
+  // "Dates de lecture" (08/10/2026) : le début se renseigne dès « En cours », la fin seulement une fois « Lu ».
+  const showStartDate = currentStatusListId !== DEFAULT_LIST_IDS.toRead;
+  const showFinishDate = currentStatusListId === DEFAULT_LIST_IDS.read;
+  const daysSpent = showFinishDate ? readingDays(entry?.startedAt, entry?.finishedAt) : null;
+
+  // La fin ne peut pas précéder le début : choisir une fin antérieure au début tire aussi le début à ce jour
+  // (cas typique : livre marqué « Lu » aujourd'hui, début posé automatiquement à aujourd'hui, alors qu'il a été fini il y a un mois).
+  // Dans l'autre sens, le sélecteur du début est borné à la fin (`maximumDay`), rien n'est déplacé en douce.
+  const changeFinishedAt = useCallback(
+    (finishedAt: string | undefined) => {
+      const pullStartBack = finishedAt !== undefined && entry?.startedAt !== undefined && finishedAt < entry.startedAt;
+      dispatch(
+        patchLibraryEntry({ id: workKey, patch: pullStartBack ? { finishedAt, startedAt: finishedAt } : { finishedAt } }),
+      );
+    },
+    [dispatch, workKey, entry?.startedAt],
+  );
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.coverRow}>
@@ -200,6 +220,26 @@ export default function BookDetailScreen({ route }: Props) {
             value={currentStatusListId}
             onChange={(next) => dispatch(toggleBookList({ bookId: workKey, listId: next, add: true }))}
           />
+
+          {showStartDate && (
+            <>
+              <Text style={[styles.sectionLabel, styles.spacedLabel]}>Dates de lecture</Text>
+              <ReadingDateField
+                label="Début de lecture"
+                value={entry.startedAt}
+                maximumDay={entry.finishedAt}
+                onChange={(startedAt) => dispatch(patchLibraryEntry({ id: workKey, patch: { startedAt } }))}
+              />
+              {showFinishDate && (
+                <ReadingDateField label="Fin de lecture" value={entry.finishedAt} onChange={changeFinishedAt} />
+              )}
+              {daysSpent !== null && (
+                <Text style={styles.readingDuration}>
+                  {daysSpent === 1 ? 'Lu en 1 jour' : `Lu en ${daysSpent} jours`}
+                </Text>
+              )}
+            </>
+          )}
 
           <Text style={[styles.sectionLabel, styles.spacedLabel]}>Ma note</Text>
           <RatingStars
@@ -377,6 +417,10 @@ const styles = StyleSheet.create({
   },
   spacedLabel: {
     marginTop: spacing.md,
+  },
+  readingDuration: {
+    ...typography.body,
+    fontSize: 12,
   },
   noteInput: {
     marginTop: spacing.sm,
