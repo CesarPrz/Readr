@@ -7,6 +7,7 @@ import ListPlaylistRow from '../components/ListPlaylistRow';
 import ProfileHeader from '../components/ProfileHeader';
 import { bookRepository } from '../composition/repositories';
 import { DEFAULT_LIST_IDS, type ReadingList } from '../domain/entities/ReadingList';
+import { buildReadingYear } from '../domain/usecases/buildReadingYear';
 import { generateAnonymousPseudonym } from '../utils/anonymousPseudonym';
 import { useLibrarySync } from '../hooks/useLibrarySync';
 import type { LibraryStackParamList } from '../navigation/types';
@@ -61,6 +62,10 @@ export default function LibraryScreen({ navigation }: Props) {
       dispatch(loadFollowGraph());
     }, [dispatch]),
   );
+
+  // "Mon année de lecture" (06/10/2026) : nombre de livres terminés cette année, pour la carte d'accès au bilan.
+  const currentYear = new Date().getFullYear();
+  const readThisYear = useMemo(() => buildReadingYear(entries, currentYear).books.length, [entries, currentYear]);
 
   const orderedLists = useMemo(() => {
     const defaults = DEFAULT_ORDER.map((id) => lists.find((l) => l.id === id)).filter((l): l is ReadingList => !!l);
@@ -148,6 +153,22 @@ export default function LibraryScreen({ navigation }: Props) {
             {/* Séparateur pleine largeur (annule le padding horizontal du conteneur) : une bande d'une nuance légèrement différente du fond, à la place de l'ancienne carte autour du profil. */}
             <View style={styles.profileSeparator} />
 
+            <Pressable
+              style={({ pressed }) => [styles.yearCard, pressed && styles.yearCardPressed]}
+              onPress={() => navigation.navigate('ReadingYear')}
+            >
+              <View style={styles.yearIcon}>
+                <Ionicons name="calendar" size={22} color={colors.background} />
+              </View>
+              <View style={styles.yearInfo}>
+                <Text style={styles.yearTitle}>Mon année de lecture {currentYear}</Text>
+                <Text style={styles.yearSubtitle}>
+                  {readThisYear === 0 ? 'Aucun livre terminé pour l\'instant' : `${readThisYear} ${readThisYear > 1 ? 'livres lus' : 'livre lu'} cette année`}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.placeholder} />
+            </Pressable>
+
             <View style={styles.headerRow}>
               <Text style={styles.headerTitle}>Mes listes</Text>
               <Pressable style={styles.addButton} onPress={() => setCreating(true)} hitSlop={8}>
@@ -216,6 +237,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     marginHorizontal: -spacing.lg,
     marginBottom: spacing.md,
+  },
+  yearCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  yearCardPressed: {
+    opacity: 0.7,
+  },
+  yearIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accentSage,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  yearInfo: {
+    flex: 1,
+    marginHorizontal: spacing.md,
+  },
+  yearTitle: {
+    ...typography.title,
+    fontSize: 16,
+  },
+  yearSubtitle: {
+    ...typography.body,
+    marginTop: 2,
   },
   headerRow: {
     flexDirection: 'row',

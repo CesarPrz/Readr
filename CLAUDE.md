@@ -276,6 +276,16 @@ Demande : *« pour la date de lecture, pouvoir mettre début de lecture / fin de
 - Tests : `tests/readingDates.test.ts` (utilitaires, remplissage automatique, garde-fous de `updateLibraryEntry`, légende).
 - Jamais lancé sur un appareil : à vérifier à l'œil (boîte de dialogue Android, calendrier iOS en thème sombre, croix d'effacement).
 
+## Mon année de lecture (06/10/2026)
+
+Suite des « Dates de lecture » : un bilan annuel des livres terminés.
+
+- **Usecase pur `buildReadingYear(entries, year)`** (`domain/usecases/buildReadingYear.ts`, aucune dépendance à un dépôt) : les livres de la liste « Lu » dont `finishedAt` tombe dans l'année, triés par date de fin ; 12 mois (vides compris) ; note moyenne des seuls livres notés (une décimale) ; durée moyenne en jours (`readingDays`, début et fin compris, livres sans début ignorés) ; lecture la plus rapide / la plus longue (pas de « plus longue » s'il n'y a qu'un livre chronométré) ; `undatedCount` = livres « Lu » sans date de fin valide, toutes années confondues. `readingYears(entries, currentYear)` : les années proposées (celles qui ont au moins un livre terminé, plus l'année en cours).
+- Calculé à la volée depuis `state.library.entries` (comme le filtrage de `ListDetailScreen`) : aucun slice, aucun thunk, aucun port, rien de nouveau dans Firestore.
+- **UI** : carte « Mon année de lecture [année] » sur `LibraryScreen`, entre le profil et « Mes listes », avec le nombre de livres lus cette année. Elle ouvre `ReadingYearScreen` (`LibraryStack`, route `ReadingYear`, param optionnel `year`) : flèches pour changer d'année, total (et coups de cœur, liste « Aimés »), tuiles note / durée moyennes, histogramme par mois en `View` simples (pas de lib de graphique), lecture la plus rapide / la plus longue, puis les livres mois par mois (le plus récent en haut, `BookCard` en défilement horizontal avec la période en légende). Si des livres « Lu » n'ont pas de date de fin, un encart invite à les compléter et ouvre la liste « Lu ».
+- Livres d'avant « Dates de lecture » : sans `finishedAt`, ils ne comptent dans aucune année (pas de rattrapage, d'où l'encart).
+- Tests : `tests/readingYear.test.ts`. Jamais lancé sur un appareil : à vérifier à l'œil (histogramme, défilement horizontal, flèches d'année).
+
 ## Pièges connus — à relire AVANT d'éditer du code (mémo)
 
 Erreurs déjà commises plusieurs fois et corrigées à la main par Cesar. Ne plus les réintroduire.
@@ -293,5 +303,6 @@ Erreurs déjà commises plusieurs fois et corrigées à la main par Cesar. Ne pl
 - `tests/social.test.ts` : normalisation de la recherche d'utilisateurs, `searchUsers`, `followUser`, `updateUsername`/`updateBio`.
 - `tests/utils.test.ts` : tags de genre, dates relatives.
 - `tests/readingDates.test.ts` : dates de lecture (voir la section « Dates de lecture »).
+- `tests/readingYear.test.ts` : bilan annuel `buildReadingYear` / `readingYears` (voir la section « Mon année de lecture »).
 - `tests/` est exclu de `tsconfig.json` (Node, `node:test` n'ont pas de types sans `@types/node`) : les tests ne sont pas type-checkés par `tsc`.
 - Pour ajouter un test : un fichier `tests/<sujet>.test.ts`, des dépôts factices écrits à la main dans le test (voir `tests/helpers.ts`), jamais de mock de Firebase.

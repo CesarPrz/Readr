@@ -101,11 +101,17 @@ export type ListDetailParams = {
   isDefault: boolean; // conditionne l'affichage du bouton de suppression dans l'en-tête
 };
 
+/** "Mon année de lecture" (06/10/2026) : sans paramètre, l'année en cours. */
+export type ReadingYearParams = {
+  year?: number;
+};
+
 export type LibraryStackParamList = {
   LibraryHome: undefined;
   ListDetail: ListDetailParams;
   BookDetail: BookDetailParams;
   Scan: ScanParams | undefined;
+  ReadingYear: ReadingYearParams | undefined;
 };
 
 // L'onglet Profil dédié (Phase 3 du plan Firebase) et son

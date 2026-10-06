@@ -10,6 +10,7 @@ import DiscoverScreen from '../screens/DiscoverScreen';
 import HomeScreen from '../screens/HomeScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ListDetailScreen from '../screens/ListDetailScreen';
+import ReadingYearScreen from '../screens/ReadingYearScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
 import UserListScreen from '../screens/UserListScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
@@ -95,6 +96,8 @@ function LibraryStackNavigator() {
       />
       <LibraryStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
       <LibraryStack.Screen name="Scan" component={ScanScreen} options={{ title: 'Scanner un livre' }} />
+      {/* "Mon année de lecture" (06/10/2026) : ouvert depuis la carte au-dessus des listes. */}
+      <LibraryStack.Screen name="ReadingYear" component={ReadingYearScreen} options={{ title: 'Mon année de lecture' }} />
     </LibraryStack.Navigator>
   );
 }
