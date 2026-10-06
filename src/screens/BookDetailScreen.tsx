@@ -10,6 +10,7 @@ import type { Book } from '../domain/entities/Book';
 import { DEFAULT_LIST_IDS, EXCLUSIVE_STATUS_LIST_IDS } from '../domain/entities/ReadingList';
 import type {
   DiscoverStackParamList,
+  FeedStackParamList,
   LibraryStackParamList,
   ScanStackParamList,
   SearchStackParamList,
@@ -21,7 +22,7 @@ import { colors, radius, spacing, typography } from '../theme/theme';
 import { languageLabel } from '../utils/languageLabels';
 
 type Props = NativeStackScreenProps<
-  SearchStackParamList | DiscoverStackParamList | ScanStackParamList | LibraryStackParamList,
+  SearchStackParamList | DiscoverStackParamList | ScanStackParamList | LibraryStackParamList | FeedStackParamList,
   'BookDetail'
 >;
 

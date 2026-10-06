@@ -19,16 +19,26 @@ export type LoadedUserProfile = {
  * avant cette fonctionnalité pour l'écran Profil) et `bio` reste `undefined`
  * (pas de repli textuel pour une bio vide — contrairement au pseudo, une bio
  * absente doit rester absente, pas remplacée par un texte générique) —
- * jamais d'écran vide pour le pseudo, jamais d'écriture déclenchée ici :
- * aucun document n'est créé tant que l'utilisateur n'édite pas explicitement
- * son profil (voir `updateUsername.ts`/`updateBio.ts`), pour ne pas écrire
- * un document Firestore pour chaque session anonyme qui ne personnalise
- * jamais rien.
+ * jamais d'écran vide pour le pseudo.
+ *
+ * **Écriture déclenchée ici depuis "Recherche d'utilisateurs" (08/10/2026,
+ * plan Firebase)** — changement par rapport à l'ancien principe "jamais
+ * d'écriture au chargement" : pour être TROUVABLE par la recherche
+ * d'utilisateurs, un profil doit exister dans `users/{uid}` avec son champ
+ * de recherche dérivé (`usernameSearch`, voir `utils/userSearch.ts`). Si le
+ * document n'indique pas déjà être indexé (`searchIndexed`), on appelle donc
+ * `ensureSearchable` — sans l'attendre (`void`), best-effort — ce qui crée le
+ * document avec le pseudonyme généré pour un utilisateur qui n'avait rien
+ * personnalisé, et ajoute simplement le champ manquant pour un pseudo déjà
+ * choisi avant cette fonctionnalité (qui n'est jamais écrasé, voir la doc de
+ * `ensureSearchable`). Une fois indexé, plus aucune écriture ici.
  */
 export async function loadUserProfile(userProfileRepo: UserProfileRepository, uid: string): Promise<LoadedUserProfile> {
   const stored = await userProfileRepo.fetchProfile(uid);
+  const username = stored?.username || generateAnonymousPseudonym(uid);
+  if (!stored?.searchIndexed) void userProfileRepo.ensureSearchable(uid, username);
   return {
-    username: stored?.username || generateAnonymousPseudonym(uid),
+    username,
     bio: stored?.bio,
   };
 }

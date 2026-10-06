@@ -1,5 +1,6 @@
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { PublicUserProfile, UserProfileRepository } from '../../domain/repositories/UserProfileRepository';
+import { normalizeForUserSearch } from '../../utils/userSearch';
 import { firestoreDb } from './firebaseApp';
 
 /**
@@ -15,8 +16,10 @@ export class FirestoreUserProfileRepository implements UserProfileRepository {
       if (!snapshot.exists()) return null;
 
       const data = snapshot.data();
+      const username = typeof data.username === 'string' ? data.username : '';
       return {
-        username: typeof data.username === 'string' ? data.username : '',
+        username,
+        searchIndexed: username !== '' && data.usernameSearch === normalizeForUserSearch(username),
         photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : undefined,
         bio: typeof data.bio === 'string' ? data.bio : undefined,
       };
@@ -36,7 +39,9 @@ export class FirestoreUserProfileRepository implements UserProfileRepository {
       await setDoc(
         doc(firestoreDb, 'users', uid),
         {
-          ...('username' in patch ? { username: patch.username } : {}),
+          ...('username' in patch
+            ? { username: patch.username, usernameSearch: normalizeForUserSearch(patch.username ?? '') }
+            : {}),
           ...('photoUrl' in patch ? { photoUrl: patch.photoUrl ?? null } : {}),
           ...('bio' in patch ? { bio: patch.bio ?? null } : {}),
           updatedAt: serverTimestamp(),
@@ -46,6 +51,25 @@ export class FirestoreUserProfileRepository implements UserProfileRepository {
     } catch {
       // best-effort — voir la doc du port ; l'appelant reste quand même
       // à jour localement (mise à jour optimiste côté Redux, voir authSlice).
+    }
+  }
+
+  async ensureSearchable(uid: string, defaultUsername: string): Promise<void> {
+    try {
+      const ref = doc(firestoreDb, 'users', uid);
+      // Lecture DIRECTE ici (pas `fetchProfile`) : on doit distinguer
+      // "document absent" d'une erreur réseau — une erreur lève et sort par
+      // le catch, sans jamais écrire. Voir la doc du port.
+      const snapshot = await getDoc(ref);
+      const data = snapshot.exists() ? snapshot.data() : undefined;
+      const existing = typeof data?.username === 'string' ? data.username : '';
+      const username = existing || defaultUsername;
+      const usernameSearch = normalizeForUserSearch(username);
+      if (existing && data?.usernameSearch === usernameSearch) return; // déjà trouvable, rien à écrire
+
+      await setDoc(ref, { username, usernameSearch, updatedAt: serverTimestamp() }, { merge: true });
+    } catch {
+      // best-effort — réessayé au prochain démarrage tant que `searchIndexed` reste faux
     }
   }
 }

@@ -30,13 +30,38 @@ service cloud.firestore {
     // logique de lecture publique/écriture propriétaire que `library`/
     // `lists` ci-dessous — posé en prévision de la Phase "Amis" (consultation
     // du profil d'un AUTRE utilisateur), pas encore d'écran qui lit le profil
-    // de quelqu'un d'autre pour l'instant. Les compteurs Abonnés/Abonnements
+    // de quelqu'un d'autre pour l'instant. "Recherche d'utilisateurs"
+    // (08/10/2026) : ce même document porte aussi `usernameSearch` (pseudo
+    // normalisé, minuscules et sans accents — voir `utils/userSearch.ts`),
+    // interrogé par une requête de PRÉFIXE sur toute la collection `users`
+    // (`FirestoreUserSearchRepository`). Couvert par la même règle de
+    // lecture publique ci-dessous (`allow read` vaut pour un `get` comme pour
+    // une requête de collection) — aucun changement de règle. Les compteurs Abonnés/Abonnements
     // affichés par `ProfileHeader` ne vivent dans AUCUN document Firestore :
     // purement visuels pour l'instant (toujours 0), voir la doc de ce
     // composant.
     match /users/{uid} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    // "Fil d'amis" (08/10/2026) : abonnements façon Instagram/Letterboxd. Un
+    // abonnement = DEUX documents écrits ensemble par l'ABONNÉ (voir
+    // `FirestoreFollowRepository`) : `users/{uid}/following/{target}` (ma
+    // liste, j'en suis seul propriétaire) et `users/{target}/followers/{uid}`
+    // (index inverse, sur le profil du SUIVI — c'est donc l'abonné, pas le
+    // propriétaire du profil, qui doit pouvoir y écrire, mais uniquement SON
+    // propre document). Lecture publique pour les deux (compteurs, fil) ;
+    // impossible de se suivre soi-même ; un utilisateur ne peut pas retirer
+    // un abonné qui le suit (il n'est pas propriétaire de ce document).
+    match /users/{uid}/following/{targetUid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == uid && targetUid != uid;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid}/followers/{followerUid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == followerUid && uid != followerUid;
+      allow delete: if request.auth != null && request.auth.uid == followerUid;
     }
     match /users/{uid}/library/{bookId} {
       allow read: if request.auth != null;

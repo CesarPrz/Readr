@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import BookCard from '../components/BookCard';
+import UserSearchPanel from '../components/UserSearchPanel';
 import { bookRepository } from '../composition/repositories';
 import type { Book } from '../domain/entities/Book';
+import type { UserSummary } from '../domain/repositories/UserSearchRepository';
 import type { SearchStackParamList } from '../navigation/types';
 import { clearResults, runSearch, setQuery } from '../store/searchSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -52,6 +54,8 @@ export default function SearchScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
   const { query, results, page, rawFetched, numFound, status } = useAppSelector((state) => state.search);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // "Recherche d'utilisateurs" (08/10/2026) : bascule Livres/Utilisateurs sous le titre, état purement local à l'écran.
+  const [mode, setMode] = useState<'books' | 'users'>('books');
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -92,6 +96,18 @@ export default function SearchScreen({ navigation }: Props) {
     [navigation],
   );
 
+  const openUser = useCallback(
+    (user: UserSummary) => {
+      navigation.navigate('UserProfile', {
+        uid: user.uid,
+        username: user.username,
+        photoUrl: user.photoUrl,
+        bio: user.bio,
+      });
+    },
+    [navigation],
+  );
+
   const openLanguage = useCallback(
     (language: string) => {
       navigation.navigate('LanguageResults', { query: query.trim(), language });
@@ -105,68 +121,88 @@ export default function SearchScreen({ navigation }: Props) {
     <View style={styles.container}>
       <Text style={styles.hero}>Trouve ton{'\n'}prochain livre</Text>
 
-      <View style={styles.searchBar}>
-        <Ionicons name="search" size={18} color={colors.secondaryText} />
-        <TextInput
-          value={query}
-          onChangeText={(text) => dispatch(setQuery(text))}
-          placeholder="Titre, auteur, ISBN..."
-          placeholderTextColor={colors.placeholder}
-          style={styles.input}
-          autoCorrect={false}
-          returnKeyType="search"
-        />
+      <View style={styles.segmented}>
+        {(['books', 'users'] as const).map((value) => (
+          <Pressable
+            key={value}
+            style={[styles.segment, mode === value && styles.segmentActive]}
+            onPress={() => setMode(value)}
+          >
+            <Text style={[styles.segmentText, mode === value && styles.segmentTextActive]}>
+              {value === 'books' ? 'Livres' : 'Utilisateurs'}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
-      {status === 'error' && (
-        <Text style={styles.message}>La recherche a échoué. Vérifie ta connexion et réessaie.</Text>
-      )}
-
-      {status === 'loading' ? (
-        <ActivityIndicator style={styles.loader} color={colors.accentOrange} />
+      {mode === 'users' ? (
+        <UserSearchPanel onOpenUser={openUser} />
       ) : (
-        <FlatList
-          data={languageGroups}
-          keyExtractor={(group) => group.language || '__unknown__'}
-          contentContainerStyle={styles.list}
-          onEndReachedThreshold={0.4}
-          onEndReached={loadMore}
-          ListEmptyComponent={
-            query.trim().length > 0 ? null : (
-              <Text style={styles.message}>Cherche un titre, un auteur ou un ISBN pour commencer.</Text>
-            )
-          }
-          renderItem={({ item: group }) => (
-            <View style={styles.section}>
-              {group.language ? (
-                <Pressable
-                  style={({ pressed }) => [styles.sectionHeader, pressed && styles.sectionHeaderPressed]}
-                  onPress={() => openLanguage(group.language)}
-                >
-                  <Text style={styles.sectionTitle}>{group.label}</Text>
-                  <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
-                </Pressable>
-              ) : (
-                <Text style={[styles.sectionTitle, styles.sectionTitleStandalone]}>{group.label}</Text>
-              )}
+        <>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={18} color={colors.secondaryText} />
+            <TextInput
+              value={query}
+              onChangeText={(text) => dispatch(setQuery(text))}
+              placeholder="Titre, auteur, ISBN..."
+              placeholderTextColor={colors.placeholder}
+              style={styles.input}
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+          </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowContent}>
-                {group.books.map((book) => (
-                  <BookCard
-                    key={book.id}
-                    title={book.title}
-                    authors={book.authors}
-                    genres={book.genres}
-                    coverUrl={book.coverUrl ?? bookRepository.coverUrl(book.coverId, 'M')}
-                    onPress={() => openBook(book)}
-                    width={ROW_CARD_WIDTH}
-                  />
-                ))}
-              </ScrollView>
-            </View>
+          {status === 'error' && (
+            <Text style={styles.message}>La recherche a échoué. Vérifie ta connexion et réessaie.</Text>
           )}
-          ListFooterComponent={status === 'loadingMore' ? <ActivityIndicator color={colors.accentOrange} /> : null}
-        />
+
+          {status === 'loading' ? (
+            <ActivityIndicator style={styles.loader} color={colors.accentOrange} />
+          ) : (
+            <FlatList
+              data={languageGroups}
+              keyExtractor={(group) => group.language || '__unknown__'}
+              contentContainerStyle={styles.list}
+              onEndReachedThreshold={0.4}
+              onEndReached={loadMore}
+              ListEmptyComponent={
+                query.trim().length > 0 ? null : (
+                  <Text style={styles.message}>Cherche un titre, un auteur ou un ISBN pour commencer.</Text>
+                )
+              }
+              renderItem={({ item: group }) => (
+                <View style={styles.section}>
+                  {group.language ? (
+                    <Pressable
+                      style={({ pressed }) => [styles.sectionHeader, pressed && styles.sectionHeaderPressed]}
+                      onPress={() => openLanguage(group.language)}
+                    >
+                      <Text style={styles.sectionTitle}>{group.label}</Text>
+                      <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
+                    </Pressable>
+                  ) : (
+                    <Text style={[styles.sectionTitle, styles.sectionTitleStandalone]}>{group.label}</Text>
+                  )}
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowContent}>
+                    {group.books.map((book) => (
+                      <BookCard
+                        key={book.id}
+                        title={book.title}
+                        authors={book.authors}
+                        genres={book.genres}
+                        coverUrl={book.coverUrl ?? bookRepository.coverUrl(book.coverId, 'M')}
+                        onPress={() => openBook(book)}
+                        width={ROW_CARD_WIDTH}
+                      />
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+              ListFooterComponent={status === 'loadingMore' ? <ActivityIndicator color={colors.accentOrange} /> : null}
+            />
+          )}
+        </>
       )}
     </View>
   );
@@ -182,6 +218,29 @@ const styles = StyleSheet.create({
     ...typography.hero,
     marginTop: spacing.lg,
     marginBottom: spacing.lg,
+  },
+  segmented: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    padding: 3,
+    marginBottom: spacing.md,
+  },
+  segment: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+  },
+  segmentActive: {
+    backgroundColor: colors.surfaceAlt,
+  },
+  segmentText: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  segmentTextActive: {
+    color: colors.accentOrange,
   },
   searchBar: {
     flexDirection: 'row',

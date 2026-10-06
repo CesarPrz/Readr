@@ -18,4 +18,17 @@ export type LibraryEntry = {
   rating?: number; // 1–5, optional
   note?: string;
   addedAt: string; // ISO date string
+  /**
+   * Date ISO de la dernière ACTIVITÉ de lecture sur ce livre ("Fil d'amis",
+   * 08/10/2026) : posée à l'ajout, puis à chaque changement de statut de
+   * lecture (À lire/En cours/Lu, voir `toggleBookList`) ou de note (voir
+   * `updateLibraryEntry`) — PAS à chaque écriture (une note de texte, un like
+   * ou une liste perso n'en font pas une "activité" à montrer aux abonnés).
+   * C'est ce champ, et non `updatedAt` côté Firestore, qui ordonne le fil :
+   * `updatedAt` est réécrit pour TOUTES les entrées à chaque démarrage par la
+   * sauvegarde en masse (`syncLibraryToCloud`), il ne dit donc rien de
+   * l'activité réelle. Absent sur les entrées antérieures à cette
+   * fonctionnalité — la synchronisation le remplace alors par `addedAt`.
+   */
+  activityAt?: string;
 };

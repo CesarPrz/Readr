@@ -13,14 +13,14 @@ type Props = {
   /** Description libre façon Instagram (08/10/2026) — voir `UserProfile.bio`. `undefined`/vide : pas de repli textuel, juste une invite à en écrire une quand `editable`. */
   bio?: string;
   /**
-   * Compteurs façon Instagram, PUREMENT VISUELS pour l'instant (08/10/2026,
-   * "Profil façon Instagram" — voir le plan Firebase) : il n'existe aucun
-   * système de followers dans l'app (pas de collection Firestore, pas
-   * d'écran pour suivre quelqu'un) — décision produit assumée avec le
-   * porteur du projet de préparer l'EMPLACEMENT visuel sans construire la
-   * fonctionnalité, en attendant la Phase "Amis". Toujours à 0 tant que
-   * cette phase n'existe pas ; non tappables (pas de `Pressable`) puisqu'il
-   * n'y a nulle part où naviguer depuis eux pour l'instant.
+   * Compteurs façon Instagram. PUREMENT VISUELS à l'origine ("Profil façon
+   * Instagram", 08/10/2026 — aucun système de followers n'existait alors, 0
+   * en dur) ; RÉELS depuis "Fil d'amis" (même jour, voir le plan Firebase) :
+   * l'écran appelant passe le nombre d'abonnés et d'abonnements issus de
+   * `FollowRepository` (voir `socialSlice`/`usersSlice`). Valeur par défaut
+   * 0 conservée pour un appelant qui n'a pas encore l'information. Toujours
+   * non tappables (pas de `Pressable`) : aucun écran "liste des abonnés"
+   * n'existe encore.
    */
   followersCount?: number;
   followingCount?: number;
@@ -39,6 +39,13 @@ type Props = {
   onEditBio?: (newBio: string) => void;
   onGoogleSignIn?: () => void;
   onSignOut?: () => void;
+  /**
+   * Profil d'un AUTRE utilisateur (`editable={false}`) : bouton Suivre/Abonné
+   * ("Fil d'amis", 08/10/2026). `onToggleFollow` absent = pas de bouton.
+   */
+  isFollowing?: boolean;
+  followPending?: boolean;
+  onToggleFollow?: () => void;
   googleLinkStatus?: 'idle' | 'loading' | 'error';
   googleLinkError?: string | null;
 };
@@ -73,6 +80,9 @@ export default function ProfileHeader({
   onEditBio,
   onGoogleSignIn,
   onSignOut,
+  isFollowing = false,
+  followPending = false,
+  onToggleFollow,
   googleLinkStatus = 'idle',
   googleLinkError,
 }: Props) {
@@ -158,7 +168,10 @@ export default function ProfileHeader({
           {editable && <Ionicons name="pencil" size={13} color={colors.secondaryText} />}
         </Pressable>
       )}
-      <Text style={styles.caption}>{isAnonymous ? 'Profil local, pas encore connecté' : 'Connecté avec Google'}</Text>
+      {/* Statut de connexion = info sur SA PROPRE session, jamais affichée pour le profil d'un autre utilisateur (`editable={false}`). */}
+      {editable && (
+        <Text style={styles.caption}>{isAnonymous ? 'Profil local, pas encore connecté' : 'Connecté avec Google'}</Text>
+      )}
 
       {(editable || bio) &&
         (editingBio ? (
@@ -206,6 +219,18 @@ export default function ProfileHeader({
             <Text style={styles.secondaryButtonText}>Se déconnecter</Text>
           </Pressable>
         ))}
+
+      {!editable && onToggleFollow && (
+        <Pressable
+          style={[styles.followButton, isFollowing && styles.followButtonActive]}
+          onPress={onToggleFollow}
+          disabled={followPending}
+        >
+          <Text style={[styles.followButtonText, isFollowing && styles.followButtonTextActive]}>
+            {isFollowing ? 'Abonné' : 'Suivre'}
+          </Text>
+        </Pressable>
+      )}
 
       {editable && googleLinkError ? <Text style={styles.errorText}>{googleLinkError}</Text> : null}
     </View>
@@ -347,6 +372,25 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     ...typography.body,
     color: colors.danger,
+  },
+  followButton: {
+    alignItems: 'center',
+    backgroundColor: colors.accentOrange,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  followButtonActive: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  followButtonText: {
+    color: colors.background,
+    fontWeight: '600',
+  },
+  followButtonTextActive: {
+    color: colors.primaryText,
   },
   errorText: {
     ...typography.body,

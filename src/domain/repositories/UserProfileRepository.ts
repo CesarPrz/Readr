@@ -40,6 +40,22 @@ export interface UserProfileRepository {
    * changer son pseudo.
    */
   upsertProfile(uid: string, patch: Partial<PublicUserProfile>): Promise<void>;
+
+  /**
+   * Rend le profil de l'utilisateur COURANT trouvable par la recherche
+   * d'utilisateurs ("Recherche d'utilisateurs", 08/10/2026) : s'assure que
+   * `users/{uid}` existe avec un pseudo ET son champ de recherche dérivé
+   * (voir `utils/userSearch.ts`). Si un pseudo est déjà stocké, il n'est
+   * JAMAIS écrasé — seul le champ de recherche manquant est ajouté ;
+   * `defaultUsername` (le pseudonyme généré affiché par défaut) n'est
+   * écrit que si aucun pseudo n'existe encore côté serveur. Volontairement
+   * une opération du port plutôt qu'un `upsertProfile` : `fetchProfile`
+   * renvoie `null` aussi bien pour "document absent" que pour "Firestore
+   * injoignable", et un `upsertProfile` fait sur ce `null` risquerait
+   * d'écraser un vrai pseudo personnalisé lors d'une simple coupure réseau.
+   * Best-effort, jamais d'exception.
+   */
+  ensureSearchable(uid: string, defaultUsername: string): Promise<void>;
 }
 
 /** Forme exacte du document `users/{uid}` — voir la doc du port ci-dessus. */
@@ -54,4 +70,13 @@ export type PublicUserProfile = {
    * seule ligne) — borné à `MAX_BIO_LENGTH` plutôt qu'à `MAX_USERNAME_LENGTH`.
    */
   bio?: string;
+  /**
+   * LECTURE SEULE, dérivé : `true` quand le champ de recherche stocké à côté
+   * du pseudo (`usernameSearch`, voir `utils/userSearch.ts`) existe et
+   * correspond bien au pseudo courant. Jamais écrit via `upsertProfile`
+   * (ignoré dans un `patch`) — ce dernier le recalcule lui-même à chaque
+   * écriture du pseudo. Sert uniquement à `loadUserProfile` pour savoir s'il
+   * faut appeler `ensureSearchable`.
+   */
+  searchIndexed?: boolean;
 };

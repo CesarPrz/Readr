@@ -17,6 +17,7 @@ export async function addBookToLibrary(
 ): Promise<LibraryEntry[]> {
   if (currentEntries.some((e) => e.id === book.id)) return currentEntries;
 
+  const now = new Date().toISOString();
   const entry: LibraryEntry = {
     id: book.id,
     workKeys: book.workKeys,
@@ -27,7 +28,8 @@ export async function addBookToLibrary(
     description: book.description,
     languages: book.languages,
     listIds: [initialListId],
-    addedAt: new Date().toISOString(),
+    addedAt: now,
+    activityAt: now, // voir `LibraryEntry.activityAt`
   };
   const next = [entry, ...currentEntries];
   await repo.saveAll(next);

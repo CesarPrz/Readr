@@ -28,7 +28,11 @@ export async function toggleBookList(
       if (targetList?.exclusive) listIds = listIds.filter((id) => !exclusiveIds.has(id));
       listIds = [...listIds, listId];
     }
-    return { ...entry, listIds };
+    // Changement de statut de lecture (liste exclusive ajoutée) = activité
+    // visible dans le fil des abonnés — voir `LibraryEntry.activityAt`. Retirer
+    // une liste, aimer ou ajouter à une liste perso n'en est pas une.
+    const activityAt = add && targetList?.exclusive ? new Date().toISOString() : entry.activityAt;
+    return { ...entry, listIds, activityAt };
   });
   await repo.saveAll(next);
   return next;

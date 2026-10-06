@@ -49,6 +49,11 @@ export function toFirestoreLibraryEntry(entry: LibraryEntry) {
     rating: entry.rating ?? null,
     note: entry.note ?? null,
     addedAt: entry.addedAt,
+    // `?? addedAt` : les entrées antérieures au fil d'amis n'ont pas encore de
+    // `activityAt` ; la sauvegarde en masse du démarrage le renseigne ainsi
+    // pour elles (sans quoi la requête `orderBy('activityAt')` du fil, qui
+    // ignore les documents sans ce champ, ne les verrait jamais).
+    activityAt: entry.activityAt ?? entry.addedAt,
     updatedAt: serverTimestamp(),
   };
 }
@@ -77,6 +82,7 @@ export function fromFirestoreLibraryEntry(id: string, data: Record<string, unkno
     rating: typeof data.rating === 'number' ? data.rating : undefined,
     note: typeof data.note === 'string' ? data.note : undefined,
     addedAt: typeof data.addedAt === 'string' ? data.addedAt : new Date().toISOString(),
+    activityAt: typeof data.activityAt === 'string' ? data.activityAt : undefined,
   };
 }
 

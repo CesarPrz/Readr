@@ -2,11 +2,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import bookDetailReducer from './bookDetailSlice';
 import discoverReducer from './discoverSlice';
+import feedReducer from './feedSlice';
 import languageResultsReducer from './languageResultsSlice';
 import libraryReducer from './librarySlice';
 import listsReducer from './listsSlice';
 import scanReducer from './scanSlice';
 import searchReducer from './searchSlice';
+import socialReducer from './socialSlice';
+import usersReducer from './usersSlice';
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +21,9 @@ export const store = configureStore({
     discover: discoverReducer,
     scan: scanReducer,
     auth: authReducer,
+    users: usersReducer,
+    social: socialReducer,
+    feed: feedReducer,
   },
 });
 

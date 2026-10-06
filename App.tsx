@@ -8,6 +8,7 @@ import { store } from './src/store/store';
 import { ensureSignedIn, loadUserProfile } from './src/store/authSlice';
 import { fetchLibrary, refreshLibrary, syncLibraryToCloud } from './src/store/librarySlice';
 import { fetchLists, refreshLists, syncListsToCloud } from './src/store/listsSlice';
+import { loadFollowGraph } from './src/store/socialSlice';
 import { navigationTheme } from './src/theme/theme';
 
 export default function App() {
@@ -31,6 +32,8 @@ export default function App() {
       // appliquerait de toute façon s'il ne trouve rien à charger — voir
       // `UserProfile.username` et `loadUserProfile.ts`.
       store.dispatch(loadUserProfile());
+      // Mon graphe d'abonnements ("Fil d'amis") : compteurs du profil et état des boutons "Suivre". Best-effort, jamais attendu.
+      store.dispatch(loadFollowGraph());
       // Révision locale juste avant de lancer la sauvegarde en masse — voir
       // la doc de `refreshLibrary`/`refreshLists` (librarySlice/listsSlice) :
       // c'est ce repère qui permettra, une fois le cycle push+pull terminé,

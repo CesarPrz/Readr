@@ -7,12 +7,16 @@ import SearchScreen from '../screens/SearchScreen';
 import LanguageResultsScreen from '../screens/LanguageResultsScreen';
 import ScanScreen from '../screens/ScanScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
+import FeedScreen from '../screens/FeedScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ListDetailScreen from '../screens/ListDetailScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
+import UserListScreen from '../screens/UserListScreen';
+import UserProfileScreen from '../screens/UserProfileScreen';
 import { languageLabel } from '../utils/languageLabels';
 import type {
   DiscoverStackParamList,
+  FeedStackParamList,
   LibraryStackParamList,
   RootTabParamList,
   ScanStackParamList,
@@ -23,6 +27,7 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 const SearchStack = createNativeStackNavigator<SearchStackParamList>();
 const ScanStack = createNativeStackNavigator<ScanStackParamList>();
 const DiscoverStack = createNativeStackNavigator<DiscoverStackParamList>();
+const FeedStack = createNativeStackNavigator<FeedStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
 
 const stackScreenOptions = {
@@ -42,6 +47,9 @@ function SearchStackNavigator() {
         options={({ route }) => ({ title: languageLabel(route.params.language) })}
       />
       <SearchStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
+      {/* "Recherche d'utilisateurs" (08/10/2026) : profil public d'un autre utilisateur, puis ses listes en lecture seule. */}
+      <SearchStack.Screen name="UserProfile" component={UserProfileScreen} options={({ route }) => ({ title: route.params.username })} />
+      <SearchStack.Screen name="UserList" component={UserListScreen} options={({ route }) => ({ title: route.params.listName })} />
     </SearchStack.Navigator>
   );
 }
@@ -61,6 +69,18 @@ function DiscoverStackNavigator() {
       <DiscoverStack.Screen name="DiscoverHome" component={DiscoverScreen} options={{ title: 'Découvrir' }} />
       <DiscoverStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
     </DiscoverStack.Navigator>
+  );
+}
+
+function FeedStackNavigator() {
+  return (
+    <FeedStack.Navigator screenOptions={stackScreenOptions}>
+      {/* "Fil d'amis" (08/10/2026) : le fil, puis le livre ou le profil d'un lecteur ouvert depuis une ligne. */}
+      <FeedStack.Screen name="FeedHome" component={FeedScreen} options={{ title: 'Fil' }} />
+      <FeedStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
+      <FeedStack.Screen name="UserProfile" component={UserProfileScreen} options={({ route }) => ({ title: route.params.username })} />
+      <FeedStack.Screen name="UserList" component={UserListScreen} options={({ route }) => ({ title: route.params.listName })} />
+    </FeedStack.Navigator>
   );
 }
 
@@ -119,6 +139,13 @@ export default function RootNavigator() {
         component={DiscoverStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="sparkles" color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Fil"
+        component={FeedStackNavigator}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="newspaper" color={color} size={size} />,
         }}
       />
       <Tab.Screen

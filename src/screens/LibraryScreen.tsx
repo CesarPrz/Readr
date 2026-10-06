@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import ListPlaylistRow from '../components/ListPlaylistRow';
 import ProfileHeader from '../components/ProfileHeader';
@@ -11,6 +12,7 @@ import { useLibrarySync } from '../hooks/useLibrarySync';
 import type { LibraryStackParamList } from '../navigation/types';
 import { linkGoogleAccount, signOutUser, updateBio, updateUsername } from '../store/authSlice';
 import { createList, deleteList } from '../store/listsSlice';
+import { loadFollowGraph } from '../store/socialSlice';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, radius, spacing, typography } from '../theme/theme';
 
@@ -43,6 +45,7 @@ export default function LibraryScreen({ navigation }: Props) {
   const entries = useAppSelector((state) => state.library.entries);
   const lists = useAppSelector((state) => state.lists.lists);
   const { user, googleLinkStatus, googleLinkError } = useAppSelector((state) => state.auth);
+  const { followingIds, followerIds } = useAppSelector((state) => state.social);
   const [creating, setCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
 
@@ -51,6 +54,13 @@ export default function LibraryScreen({ navigation }: Props) {
   // `ListDetailScreen` fait de même (voir `useLibrarySync`) puisqu'on peut
   // tout aussi bien revenir directement là après un ajout/like.
   useLibrarySync();
+
+  // Compteurs Abonnés/Abonnements réels ("Fil d'amis") : relus à chaque focus, au cas où un abonné est arrivé depuis.
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(loadFollowGraph());
+    }, [dispatch]),
+  );
 
   const orderedLists = useMemo(() => {
     const defaults = DEFAULT_ORDER.map((id) => lists.find((l) => l.id === id)).filter((l): l is ReadingList => !!l);
@@ -122,6 +132,8 @@ export default function LibraryScreen({ navigation }: Props) {
                 username={user.username ?? generateAnonymousPseudonym(user.uid)}
                 photoUrl={user.photoUrl}
                 bio={user.bio}
+                followersCount={followerIds.length}
+                followingCount={followingIds.length}
                 isAnonymous={user.isAnonymous}
                 editable
                 onEditUsername={(newUsername) => dispatch(updateUsername(newUsername))}
@@ -132,6 +144,9 @@ export default function LibraryScreen({ navigation }: Props) {
                 googleLinkError={googleLinkError}
               />
             )}
+
+            {/* Séparateur pleine largeur (annule le padding horizontal du conteneur) : une bande d'une nuance légèrement différente du fond, à la place de l'ancienne carte autour du profil. */}
+            <View style={styles.profileSeparator} />
 
             <View style={styles.headerRow}>
               <Text style={styles.headerTitle}>Mes listes</Text>
@@ -195,6 +210,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
+  },
+  profileSeparator: {
+    height: 8,
+    backgroundColor: colors.surface,
+    marginHorizontal: -spacing.lg,
+    marginBottom: spacing.md,
   },
   headerRow: {
     flexDirection: 'row',

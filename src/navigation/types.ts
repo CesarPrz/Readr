@@ -20,11 +20,42 @@ export type LanguageResultsParams = {
   language: string; // code langue Open Library, ex. "fre"
 };
 
+/** Profil public d'un autre utilisateur, ouvert depuis un résultat de la recherche d'utilisateurs — les champs preset permettent d'afficher l'en-tête avant la fin du chargement. */
+export type UserProfileParams = {
+  uid: string;
+  username: string;
+  photoUrl?: string;
+  bio?: string;
+};
+
+/** Contenu d'une liste de lecture d'un autre utilisateur (lecture seule), ouvert depuis son profil public. */
+export type UserListParams = {
+  uid: string;
+  listId: string;
+  listName: string;
+};
+
+/**
+ * Écrans partagés par TOUTE pile qui peut ouvrir le profil d'un autre
+ * utilisateur (recherche d'utilisateurs, fil d'amis) : `UserProfileScreen`/
+ * `UserListScreen` sont typés sur cette liste commune plutôt que sur celle
+ * d'une pile précise, ce qui leur permet d'être enregistrés dans plusieurs.
+ */
+export type PublicProfileStackParamList = {
+  UserProfile: UserProfileParams;
+  UserList: UserListParams;
+  BookDetail: BookDetailParams;
+};
+
 export type SearchStackParamList = {
   SearchHome: undefined;
   LanguageResults: LanguageResultsParams;
-  BookDetail: BookDetailParams;
-};
+} & PublicProfileStackParamList;
+
+/** "Fil d'amis" (08/10/2026) : l'écran du fil, plus les écrans partagés pour ouvrir un livre ou le profil d'un lecteur depuis une ligne. */
+export type FeedStackParamList = {
+  FeedHome: undefined;
+} & PublicProfileStackParamList;
 
 export type ScanStackParamList = {
   ScanHome: undefined;
@@ -59,5 +90,6 @@ export type RootTabParamList = {
   Recherche: NavigatorScreenParams<SearchStackParamList>;
   Scanner: NavigatorScreenParams<ScanStackParamList>;
   Découvrir: NavigatorScreenParams<DiscoverStackParamList>;
+  Fil: NavigatorScreenParams<FeedStackParamList>;
   'Ma bibliothèque': NavigatorScreenParams<LibraryStackParamList>;
 };
