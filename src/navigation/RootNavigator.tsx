@@ -7,7 +7,7 @@ import SearchScreen from '../screens/SearchScreen';
 import LanguageResultsScreen from '../screens/LanguageResultsScreen';
 import ScanScreen from '../screens/ScanScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
-import FeedScreen from '../screens/FeedScreen';
+import HomeScreen from '../screens/HomeScreen';
 import LibraryScreen from '../screens/LibraryScreen';
 import ListDetailScreen from '../screens/ListDetailScreen';
 import BookDetailScreen from '../screens/BookDetailScreen';
@@ -16,7 +16,7 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import { languageLabel } from '../utils/languageLabels';
 import type {
   DiscoverStackParamList,
-  FeedStackParamList,
+  HomeStackParamList,
   LibraryStackParamList,
   RootTabParamList,
   SearchStackParamList,
@@ -25,7 +25,7 @@ import type {
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const SearchStack = createNativeStackNavigator<SearchStackParamList>();
 const DiscoverStack = createNativeStackNavigator<DiscoverStackParamList>();
-const FeedStack = createNativeStackNavigator<FeedStackParamList>();
+const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const LibraryStack = createNativeStackNavigator<LibraryStackParamList>();
 
 const stackScreenOptions = {
@@ -63,15 +63,15 @@ function DiscoverStackNavigator() {
   );
 }
 
-function FeedStackNavigator() {
+function HomeStackNavigator() {
   return (
-    <FeedStack.Navigator screenOptions={stackScreenOptions}>
-      {/* "Fil d'amis" (08/10/2026) : le fil, puis le livre ou le profil d'un lecteur ouvert depuis une ligne. */}
-      <FeedStack.Screen name="FeedHome" component={FeedScreen} options={{ title: 'Fil' }} />
-      <FeedStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
-      <FeedStack.Screen name="UserProfile" component={UserProfileScreen} options={({ route }) => ({ title: route.params.username })} />
-      <FeedStack.Screen name="UserList" component={UserListScreen} options={({ route }) => ({ title: route.params.listName })} />
-    </FeedStack.Navigator>
+    <HomeStack.Navigator screenOptions={stackScreenOptions}>
+      {/* Accueil (08/10/2026, remplace l'ancien onglet Fil) : barre de recherche, fil des abonnements, recommandations ; puis le livre ou le profil d'un lecteur ouvert depuis une ligne. */}
+      <HomeStack.Screen name="HomeMain" component={HomeScreen} options={{ title: 'Accueil', headerShown: false }} />
+      <HomeStack.Screen name="BookDetail" component={BookDetailScreen} options={{ title: '' }} />
+      <HomeStack.Screen name="UserProfile" component={UserProfileScreen} options={({ route }) => ({ title: route.params.username })} />
+      <HomeStack.Screen name="UserList" component={UserListScreen} options={({ route }) => ({ title: route.params.listName })} />
+    </HomeStack.Navigator>
   );
 }
 
@@ -113,6 +113,13 @@ export default function RootNavigator() {
       }}
     >
       <Tab.Screen
+        name="Accueil"
+        component={HomeStackNavigator}
+        options={{
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
         name="Recherche"
         component={SearchStackNavigator}
         options={{
@@ -124,13 +131,6 @@ export default function RootNavigator() {
         component={DiscoverStackNavigator}
         options={{
           tabBarIcon: ({ color, size }) => <Ionicons name="sparkles" color={color} size={size} />,
-        }}
-      />
-      <Tab.Screen
-        name="Fil"
-        component={FeedStackNavigator}
-        options={{
-          tabBarIcon: ({ color, size }) => <Ionicons name="newspaper" color={color} size={size} />,
         }}
       />
       <Tab.Screen

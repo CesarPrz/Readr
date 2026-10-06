@@ -11,7 +11,7 @@ import type { Book } from '../domain/entities/Book';
 import { DEFAULT_LIST_IDS, EXCLUSIVE_STATUS_LIST_IDS } from '../domain/entities/ReadingList';
 import type {
   DiscoverStackParamList,
-  FeedStackParamList,
+  HomeStackParamList,
   LibraryStackParamList,
   SearchStackParamList,
 } from '../navigation/types';
@@ -23,7 +23,7 @@ import { colors, radius, spacing, typography } from '../theme/theme';
 import { languageLabel } from '../utils/languageLabels';
 
 type Props = NativeStackScreenProps<
-  SearchStackParamList | DiscoverStackParamList | LibraryStackParamList | FeedStackParamList,
+  SearchStackParamList | DiscoverStackParamList | LibraryStackParamList | HomeStackParamList,
   'BookDetail'
 >;
 

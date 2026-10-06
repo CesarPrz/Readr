@@ -50,12 +50,26 @@ function groupByLanguage(books: Book[]): LanguageGroup[] {
   }));
 }
 
-export default function SearchScreen({ navigation }: Props) {
+export default function SearchScreen({ navigation, route }: Props) {
   const dispatch = useAppDispatch();
   const { query, results, page, rawFetched, numFound, status } = useAppSelector((state) => state.search);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // "Recherche d'utilisateurs" (08/10/2026) : bascule Livres/Utilisateurs sous le titre, état purement local à l'écran.
   const [mode, setMode] = useState<'books' | 'users'>('books');
+  const inputRef = useRef<TextInput>(null);
+
+  // "Accueil façon Goodreads" (08/10/2026) : la barre de recherche de l'accueil
+  // arrive ici avec `focusToken` (curseur dans la barre) et/ou `mode`
+  // (onglet Utilisateurs) — voir `SearchHomeParams`.
+  const focusToken = route.params?.focusToken;
+  const requestedMode = route.params?.mode;
+  useEffect(() => {
+    if (requestedMode) setMode(requestedMode);
+    if (focusToken === undefined || (requestedMode ?? 'books') !== 'books') return;
+    // Petit délai : l'écran vient d'être affiché, le champ doit être monté et visible pour accepter le focus.
+    const timer = setTimeout(() => inputRef.current?.focus(), 150);
+    return () => clearTimeout(timer);
+  }, [focusToken, requestedMode]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -142,6 +156,7 @@ export default function SearchScreen({ navigation }: Props) {
           <View style={styles.searchBar}>
             <Ionicons name="search" size={18} color={colors.secondaryText} />
             <TextInput
+              ref={inputRef}
               value={query}
               onChangeText={(text) => dispatch(setQuery(text))}
               placeholder="Titre, auteur, ISBN..."

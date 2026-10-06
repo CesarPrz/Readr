@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
-import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import BookCard from '../components/BookCard';
-import { bookRepository } from '../composition/repositories';
+import RecommendationRow from '../components/RecommendationRow';
 import type { Book } from '../domain/entities/Book';
 import type { RecommendationGroup } from '../domain/entities/RecommendationGroup';
 import type { DiscoverStackParamList } from '../navigation/types';
@@ -11,8 +10,6 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { colors, spacing, typography } from '../theme/theme';
 
 type Props = NativeStackScreenProps<DiscoverStackParamList, 'DiscoverHome'>;
-
-const ROW_CARD_WIDTH = 120;
 
 export default function DiscoverScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
@@ -44,24 +41,7 @@ export default function DiscoverScreen({ navigation }: Props) {
   );
 
   const renderGroup = useCallback(
-    ({ item: group }: { item: RecommendationGroup }) => (
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{group.title}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rowContent}>
-          {group.books.map((book) => (
-            <BookCard
-              key={book.id}
-              title={book.title}
-              authors={book.authors}
-              genres={book.genres}
-              coverUrl={book.coverUrl ?? bookRepository.coverUrl(book.coverId, 'M')}
-              onPress={() => openBook(book)}
-              width={ROW_CARD_WIDTH}
-            />
-          ))}
-        </ScrollView>
-      </View>
-    ),
+    ({ item: group }: { item: RecommendationGroup }) => <RecommendationRow group={group} onOpenBook={openBook} />,
     [openBook],
   );
 
@@ -108,18 +88,6 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingBottom: spacing.xl,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    ...typography.title,
-    fontSize: 16,
-    marginBottom: spacing.sm,
-  },
-  rowContent: {
-    gap: spacing.md,
-    paddingRight: spacing.lg,
   },
   loader: {
     marginTop: spacing.xl,

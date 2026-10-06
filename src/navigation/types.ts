@@ -66,15 +66,27 @@ export type ScannableStackParamList = {
   BookDetail: BookDetailParams;
 };
 
+/**
+ * Paramètres optionnels de l'écran Recherche, passés par la barre de
+ * recherche de l'accueil ("Accueil façon Goodreads", 08/10/2026) :
+ * `focusToken` (une valeur qui change à chaque demande, ex. `Date.now()`)
+ * place le curseur dans la barre de recherche ; `mode` ouvre directement
+ * l'onglet Utilisateurs ("Trouver des lecteurs").
+ */
+export type SearchHomeParams = {
+  focusToken?: number;
+  mode?: 'books' | 'users';
+};
+
 export type SearchStackParamList = {
-  SearchHome: undefined;
+  SearchHome: SearchHomeParams | undefined;
   LanguageResults: LanguageResultsParams;
 } & PublicProfileStackParamList &
   ScannableStackParamList;
 
-/** "Fil d'amis" (08/10/2026) : l'écran du fil, plus les écrans partagés pour ouvrir un livre ou le profil d'un lecteur depuis une ligne. */
-export type FeedStackParamList = {
-  FeedHome: undefined;
+/** Accueil (08/10/2026, remplace l'ancien onglet Fil) : l'écran d'accueil, plus les écrans partagés pour ouvrir un livre ou le profil d'un lecteur depuis une ligne du fil. */
+export type HomeStackParamList = {
+  HomeMain: undefined;
 } & PublicProfileStackParamList;
 
 export type DiscoverStackParamList = {
@@ -103,8 +115,8 @@ export type LibraryStackParamList = {
 // `LibraryScreen.tsx`.
 
 export type RootTabParamList = {
+  Accueil: NavigatorScreenParams<HomeStackParamList>;
   Recherche: NavigatorScreenParams<SearchStackParamList>;
   Découvrir: NavigatorScreenParams<DiscoverStackParamList>;
-  Fil: NavigatorScreenParams<FeedStackParamList>;
   'Ma bibliothèque': NavigatorScreenParams<LibraryStackParamList>;
 };
